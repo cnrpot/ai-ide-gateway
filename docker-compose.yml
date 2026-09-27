@@ -1,0 +1,89 @@
+# ai-ide-gateway 统一编排：router(对外) + qoder + codebuddy + checkin
+# 用法：cp .env.example .env && 填好 key，然后 docker compose up -d --build
+
+services:
+  # ---------- 统一对外入口 ----------
+  router:
+    build:
+      context: ./router
+    image: ai-ide-gateway/router
+    restart: unless-stopped
+    ports:
+      - "8080:8080"          # 对外唯一入口；务必在 .env 里配好 GATEWAY_API_KEYS
+    environment:
+      GATEWAY_API_KEYS: ${GATEWAY_API_KEYS:-}
+      QODER_BASE_URL: http://qoder:5050
+      CODEBUDDY_BASE_URL: http://codebuddy:8787
+      QODER_BACKEND_KEY: ${QODER_BACKEND_KEY:-}
+      CODEBUDDY_BACKEND_KEY: ${CODEBUDDY_BACKEND_KEY:-}
+      DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-codebuddy}
+      QODER_MODELS: ${QODER_MODELS:-lite}
+      MODEL_ROUTES: ${MODEL_ROUTES:-}
+    depends_on:
+      - qoder
+      - codebuddy
+
+  # ---------- Qoder 后端（含管理控制台）----------
+  qoder:
+    build:
+      context: .
+      dockerfile: docker/qoder.Dockerfile
+    image: ai-ide-gateway/qoder
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5050:5050"   # 仅本机可访问控制台，用于导入 Qoder 账号/PAT
+    environment:
+      QODER_HOST: 0.0.0.0
+      QODER_PORT: "5050"
+      QODER_ADMIN_PASSWORD: ${QODER_ADMIN_PASSWORD:-admin}
+      QODER_PAT: ${QODER_PAT:-}
+    volumes:
+      - qoder-data:/data/.qoder
+
+  # ---------- WorkBuddy/CodeBuddy 后端（codebuddy2api admin 控制台）----------
+  codebuddy:
+    build:
+      context: .
+      dockerfile: docker/codebuddy.Dockerfile
+    image: ai-ide-gateway/codebuddy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"   # 仅本机可访问控制台，用于浏览器授权 CN 账号
+    environment:
+      ADMIN_KEY: ${CODEBUDDY_ADMIN_KEY:?请在 .env 设置 CODEBUDDY_ADMIN_KEY（>=20 位）}
+      CODEBUDDY2OPENAI_KEY: ${CODEBUDDY_BACKEND_KEY:?请在 .env 设置 CODEBUDDY_BACKEND_KEY}
+      CODEBUDDY_AUTH_DIR: /data/auth
+      MANAGEMENT_DATA_DIR: /data/management
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - codebuddy-auth:/data/auth
+      - codebuddy-management:/data/management
+
+  # ---------- 统一签到（默认只跑 Trae；用 profile 显式启用）----------
+  # 启动前先：cp checkin/config.example.json checkin/config.json 并填 token
+  # 启用：docker compose --profile checkin up -d
+  checkin:
+    profiles: ["checkin"]
+    build:
+      context: ./checkin
+    image: ai-ide-gateway/checkin
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      CHECKIN_ENABLE_TRAE: ${CHECKIN_ENABLE_TRAE:-1}
+      CHECKIN_ENABLE_QODER: ${CHECKIN_ENABLE_QODER:-0}
+      CHECKIN_ENABLE_WORKBUDDY: ${CHECKIN_ENABLE_WORKBUDDY:-0}
+      CHECKIN_TIME_TRAE: ${CHECKIN_TIME_TRAE:-08:30}
+      CHECKIN_TIME_QODER: ${CHECKIN_TIME_QODER:-10:05}
+      CHECKIN_TIME_WORKBUDDY: ${CHECKIN_TIME_WORKBUDDY:-08:35}
+      CHECKIN_CONFIG: /app/checkin/config.json
+      CHECKIN_LOG: /data/checkin.log
+    volumes:
+      - ./checkin/config.json:/app/checkin/config.json:ro
+      - checkin-log:/data
+
+volumes:
+  qoder-data:
+  codebuddy-auth:
+  codebuddy-management:
+  checkin-log:

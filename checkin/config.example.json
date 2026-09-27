@@ -1,0 +1,27 @@
+{
+  "_comment": "从 config.example.json 复制为 config.json 并填入 token。token 用 extract_tokens_windows.py 在 Windows 上导出，或手动粘贴。每个 provider 是账号数组，可多账号。",
+  "trae": [
+    {
+      "name": "trae-acct1",
+      "token": "<Trae 的 Cloud-IDE-JWT token>",
+      "region": "cn",
+      "device_id": ""
+    }
+  ],
+  "qoder": [
+    {
+      "name": "qoder-acct1",
+      "token": "<Qoder 的 security_oauth_token>",
+      "version": "0.3.4"
+    }
+  ],
+  "workbuddy": [
+    {
+      "name": "wb-acct1",
+      "access_token": "<WorkBuddy 的 accessToken>",
+      "uid": "<用户 uid>",
+      "domain": "",
+      "expires_at": 0
+    }
+  ]
+}

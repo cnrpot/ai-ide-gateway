@@ -1,0 +1,32 @@
+ai-ide-gateway
+==============
+
+本项目把以下三个上游开源项目聚合到一个统一网关中，并新增了 router（统一入口）、
+checkin（统一签到）与 Docker 编排。上游项目以 git submodule 形式引入，其源码版权归各自
+作者所有，均为 MIT 许可。
+
+上游项目（providers/ 下的 submodule）
+-------------------------------------
+1. QoderGateway  —  https://github.com/bzym2/QoderGateway  (MIT)
+   Qoder（阿里）的 OpenAI 兼容网关。作为 providers/qoder 引入。
+
+2. codebuddy2api  —  https://github.com/ShouZhuo0413/codebuddy2api  (MIT)
+   腾讯 CodeBuddy / WorkBuddy 的 OpenAI/Anthropic 兼容转换器 + 账号池。
+   作为 providers/codebuddy 引入。
+
+参考项目（未打包，仅作协议参考）
+-------------------------------------
+3. workbuddy-manager  —  https://github.com/ithtelab/workbuddy-manager  (MIT)
+   腾讯 CodeBuddy 运维控制台。其 server/services/tencent.py 是完整的 CodeBuddy
+   协议参考（登录/刷新/签到/额度）。本仓库未包含其代码。
+
+签到脚本来源
+-------------------------------------
+checkin/ 下的三段签到逻辑改造自社区分享的签到脚本
+（原文：https://linux.do/t/topic/2945247）。改造点：token 来源由「解密本地客户端
+凭证」改为「读取配置文件」，以便在容器中运行。
+
+免责声明
+-------------------------------------
+本项目仅用于个人学习研究。所有上游接口均来自各官方客户端的同源调用。使用者需自行
+遵守各服务的用户协议，并自行承担账号相关风险。

@@ -1,0 +1,22 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# ---- runtime data (persisted via docker volumes / bind mounts) ----
+data/
+checkin/config.json
+checkin/*.log
+**/checkin.log
+
+# ---- node (QoderGateway frontend build) ----
+node_modules/
+
+# ---- editor / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

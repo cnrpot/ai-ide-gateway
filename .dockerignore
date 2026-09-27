@@ -1,0 +1,17 @@
+# Keep build contexts lean. Root context is used for the provider images
+# (docker/qoder.Dockerfile, docker/codebuddy.Dockerfile) so they can COPY
+# from the submodules under providers/.
+.git
+**/.git
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.venv
+**/venv
+data/
+**/checkin.log
+checkin/config.json
+.env
+docs/
+*.md
+!README.md

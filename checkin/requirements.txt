@@ -1,0 +1,6 @@
+# 容器内签到只需要 HTTP 客户端（token 从 config.json 读取）。
+httpx>=0.27.0
+
+# 注意：extract_tokens_windows.py 只在你的 Windows 机器上运行，
+# 需要额外安装（不在容器里）：
+#   pip install pycryptodome
