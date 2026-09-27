@@ -21,17 +21,15 @@
 
 - 阶段 0（源码获取与来源固定）：完成。
 - 阶段 1（需求、协议和风险审查）：完成。
-- 阶段 2（上游运行时和 Docker 镜像）：进行中；四个镜像均已构建，Qoder bootstrap、三项服务健康检查和签到容器启动验证已完成，仍需补备份/迁移说明。
-- 阶段 3（统一 router）：进行中；核心路由、mock 协议和真实容器健康/模型聚合验证已完成，真实对话验证需先导入上游账号。
-- 阶段 4（签到与凭证安全）：进行中；多账号执行、原子导出和 Trae 调度容器启动已验证，仍需补脱敏 mock HTTP 回归。
+- 阶段 2（上游运行时和 Docker 镜像）：完成；四个镜像均已构建，Qoder bootstrap、三项服务健康检查、签到容器启动和备份/迁移说明已完成。
+- 阶段 3（统一 router）：完成；核心路由、mock 协议和真实容器健康/模型聚合验证已完成，真实对话需在部署机导入上游账号后验证。
+- 阶段 4（签到与凭证安全）：完成；多账号执行、原子导出、Trae 调度容器启动和脱敏 mock HTTP 回归已完成。
 - Docker engine 已恢复；router、Qoder、codebuddy、checkin 镜像均完成构建，前三个服务已完成端到端启动和健康检查。
 - 尚未写入真实账号、token、`.env` 或签到配置。
 
 ### 下一步
 
-1. 补齐 Docker 数据卷备份/恢复、升级和故障排查文档。
-2. 为签到补充脱敏 mock HTTP 回归；真实账号验证留给部署机器。
-3. 清理并提交 Docker 修复，检查敏感文件后创建 GitHub remote 并推送。
+项目已完成首版发布；后续工作是按需导入真实账号、验证真实模型调用并维护上游源码快照。
 
 ### 验证记录
 
@@ -47,6 +45,7 @@
 - Qoder 容器 SQLite bootstrap：`auth_required=True`，测试后端 key 已写入 `allowed_keys`。
 - 无上游账号时，Qoder/CodeBuddy 对话请求按预期返回无可用账号错误；不是镜像启动故障。
 - `docker compose --profile checkin up -d --build checkin`：通过；日志显示默认仅启用 Trae 调度器。
+- GitHub 公开仓库已创建并推送：<https://github.com/cnrpot/ai-ide-gateway>。
 
 ### 注意事项
 

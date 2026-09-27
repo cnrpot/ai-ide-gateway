@@ -82,4 +82,4 @@
 - Qoder 前端构建和 Linux 运行已在 Docker Engine 29.6.1 上通过；未导入 PAT 时对话接口会明确返回无可用账号。
 - codebuddy2api 自写独立镜像已构建并通过 `/health` 探活；未导入账号时返回无可用账号，auth/management 卷已挂载。
 - router 的 `/v1/responses`、`/v1/messages`、模型聚合和 key 隔离已通过 mock 与真实容器健康验证；真实模型协议回归需要有效上游账号。
-- Docker engine 已完成四镜像构建、Compose 启动、健康检查和签到 profile 启动验证；数据卷备份/恢复文档仍需补齐。
+- Docker engine 已完成四镜像构建、Compose 启动、健康检查和签到 profile 启动验证；数据卷备份/恢复已写入 `docs/operations.md`。

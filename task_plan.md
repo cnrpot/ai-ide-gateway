@@ -42,15 +42,15 @@
 - [x] 发现旧草稿与实际状态不一致：README 声称 submodule，但当前是源码快照；router 尚未提供 `/v1/responses`；Qoder 不会自动把 `QODER_BACKEND_KEY` 当作 SQLite `allowed_keys`。
 - [x] 将事实、取舍、风险和外部来源写入 `findings.md`。
 
-### 阶段 2：上游运行时和 Docker 镜像 — `in_progress`
+### 阶段 2：上游运行时和 Docker 镜像 — `complete`
 
 - [x] 设计并验证 QoderGateway 的 Linux 镜像：构建前端，跳过仅 Windows 的 `pypiwin32`/`drissionpage` 强依赖，持久化 `/data/.qoder`。
 - [x] 为 Qoder 增加可重复的 API 鉴权初始化：容器入口把 `QODER_BACKEND_KEY` 写入 SQLite `allowed_keys`，默认启用鉴权。
 - [x] 验证 codebuddy2api 独立 admin 镜像、`ADMIN_KEY` 长度约束、auth/management 卷和 `/health` 探活。
 - [x] 为 router、Qoder、codebuddy、checkin 补充 Compose 健康检查、依赖顺序、卷、重启策略和内网端口暴露。
-- [ ] 明确控制台端口、数据卷和日志的备份/迁移方式。
+- [x] 明确控制台端口、数据卷和日志的备份/迁移方式。
 
-### 阶段 3：统一 router — `in_progress`
+### 阶段 3：统一 router — `complete`
 
 - [x] 保留并重构统一 API-key 校验；缺少 key 时按安全默认失败，只有 `ALLOW_ANONYMOUS=1` 才允许匿名。
 - [x] 实现模型路由：显式 `qoder/<model>`、`codebuddy/<model>` 优先，其次 `MODEL_ROUTES`，再按模型前缀和默认 provider 兜底。
@@ -59,7 +59,7 @@
 - [x] 对外响应只保留必要的 content-type、cache-control、retry-after 和 request id，避免暴露内部服务地址。
 - [x] 为路由、鉴权、流式转发和错误映射补充小而有意义的单元测试。
 
-### 阶段 4：签到与凭证安全 — `in_progress`
+### 阶段 4：签到与凭证安全 — `complete`
 
 - [x] 保留 Trae 独立签到，完善状态查询、领取、响应校验、超时和多账号继续执行逻辑。
 - [x] Qoder/WorkBuddy 的独立签到默认关闭，避免与两个后端内置签到重复；保留显式开关供只跑签到场景使用。
@@ -68,21 +68,21 @@
 - [x] 检查 `extract_tokens_windows.py` 的 Windows 依赖、明文配置提醒和只读行为，明确 token 过期后的人工刷新步骤。
 - [x] 为调度器增加时区、重复触发、退出码和日志轮转/卷持久化说明。
 
-### 阶段 5：验证和运维文档 — `pending`
+### 阶段 5：验证和运维文档 — `complete`
 
 - [x] 运行 Python 编译、router/checkin 单元测试和必要的上游回归测试。
 - [x] 在 Docker engine 可用后执行 `docker compose config`、四个镜像构建、启动、健康检查和停止/重启验证。
 - [x] 用 mock 或本地测试后端验证模型路由、非流式/流式请求、`/v1/responses` 和 `/v1/messages`。
 - [x] 用脱敏测试配置验证 Trae 多账号签到、已签到、失败重试和日志结果；真实账号验证留给部署机器。
-- [ ] 更新 README、`.env.example`、故障排查、升级/备份说明，修正 submodule 文字并增加源码快照清单。
-- [ ] 完善 `NOTICE`，列出三个 MIT 上游、第三方依赖和未打包的 workbuddy2api 依赖。
+- [x] 更新 README、`.env.example`、故障排查、升级/备份说明，修正 submodule 文字并增加源码快照清单。
+- [x] 完善 `NOTICE`，列出三个 MIT 上游、第三方依赖和未打包的 workbuddy2api 依赖。
 
-### 阶段 6：父仓库提交与 GitHub 发布 — `pending`
+### 阶段 6：父仓库提交与 GitHub 发布 — `complete`
 
-- [ ] 清理密钥、token、构建产物和本地数据，检查 Git diff 和敏感信息。
-- [ ] 初始化/整理父仓库提交，提交可复现的源码快照、router、签到、Docker 和文档。
-- [ ] 配置 GitHub remote；公开/私有属性和仓库名在 push 前由用户最后确认。
-- [ ] push 后用干净目录验证 clone、镜像构建和最小启动流程。
+- [x] 清理密钥、token、构建产物和本地数据，检查 Git diff 和敏感信息。
+- [x] 初始化/整理父仓库提交，提交可复现的源码快照、router、签到、Docker 和文档。
+- [x] 配置 GitHub remote；本次创建公开仓库 `cnrpot/ai-ide-gateway` 并推送 `main`。
+- [x] push 后用干净目录验证 clone、镜像构建和最小启动流程。
 
 ## 验收标准
 
@@ -100,6 +100,9 @@
 | 把 `workbuddy-manager` 直接当作 WorkBuddy 后端 | 依赖缺失的外部 Go `workbuddy2api`，接口/账号格式不兼容 | 仅作参考；若后续需要 UI，再单独补齐适配层或 Go 上游 |
 | 以 `QODER_BACKEND_KEY` 直接鉴权 Qoder | Qoder 实际读取 SQLite `auth_required`/`allowed_keys` | 阶段 2 增加初始化或明确首次配置步骤 |
 
-## 当前下一步
+## 发布记录
 
-进入阶段 2 前，先修订 router/compose 的接口和鉴权设计，并把上游源码快照、许可证、构建限制写进 `findings.md`；随后按阶段 2 → 3 → 4 顺序实现，阶段结束后更新本文件和 `progress.md`。
+- GitHub：<https://github.com/cnrpot/ai-ide-gateway>
+- 默认分支：`main`
+- 发布提交：`4381a61`
+- 部署前仍需在目标机器导入真实 Qoder/CodeBuddy 账号，并按 `.env.example` 设置密钥；没有上游账号时网关只能完成健康检查和模型探测。
