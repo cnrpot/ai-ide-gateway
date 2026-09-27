@@ -82,7 +82,7 @@
 - [x] 清理密钥、token、构建产物和本地数据，检查 Git diff 和敏感信息。
 - [x] 初始化/整理父仓库提交，提交可复现的源码快照、router、签到、Docker 和文档。
 - [x] 配置 GitHub remote；本次创建公开仓库 `cnrpot/ai-ide-gateway` 并推送 `main`。
-- [x] push 后用干净目录验证 clone、镜像构建和最小启动流程。
+- [x] push 后用 GitHub 干净发布归档验证源码测试、镜像构建和最小启动流程（当前网络的 Git fetch 会卡住，因此使用官方 tarball 复核）。
 
 ## 验收标准
 
@@ -104,5 +104,5 @@
 
 - GitHub：<https://github.com/cnrpot/ai-ide-gateway>
 - 默认分支：`main`
-- 发布提交：`4381a61`
+- 发布提交：`6c8002f`
 - 部署前仍需在目标机器导入真实 Qoder/CodeBuddy 账号，并按 `.env.example` 设置密钥；没有上游账号时网关只能完成健康检查和模型探测。
