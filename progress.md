@@ -21,17 +21,17 @@
 
 - 阶段 0（源码获取与来源固定）：完成。
 - 阶段 1（需求、协议和风险审查）：完成。
-- 阶段 2（上游运行时和 Docker 镜像）：进行中；Qoder bootstrap 与 Compose 健康检查已完成，镜像尚未构建。
-- 阶段 3（统一 router）：进行中；核心路由和 mock 协议验证已完成，仍需补测试文件和真实容器验证。
-- 阶段 4（签到与凭证安全）：进行中；多账号执行和原子导出已完成，仍需做 mock HTTP 验证。
-- Docker engine 尚未完成本项目镜像构建和端到端启动验证。
+- 阶段 2（上游运行时和 Docker 镜像）：进行中；四个镜像均已构建，Qoder bootstrap、三项服务健康检查和签到容器启动验证已完成，仍需补备份/迁移说明。
+- 阶段 3（统一 router）：进行中；核心路由、mock 协议和真实容器健康/模型聚合验证已完成，真实对话验证需先导入上游账号。
+- 阶段 4（签到与凭证安全）：进行中；多账号执行、原子导出和 Trae 调度容器启动已验证，仍需补脱敏 mock HTTP 回归。
+- Docker engine 已恢复；router、Qoder、codebuddy、checkin 镜像均完成构建，前三个服务已完成端到端启动和健康检查。
 - 尚未写入真实账号、token、`.env` 或签到配置。
 
 ### 下一步
 
-1. 启动 Docker engine 后构建 Qoder、codebuddy、router 镜像并验证健康检查和账号卷。
-2. 为 router 和签到增加可重复的 mock 单元测试，覆盖流式、上游错误和多账号失败。
-3. 修订 Docker 部署故障排查、备份说明和最终 GitHub 发布清单。
+1. 补齐 Docker 数据卷备份/恢复、升级和故障排查文档。
+2. 为签到补充脱敏 mock HTTP 回归；真实账号验证留给部署机器。
+3. 清理并提交 Docker 修复，检查敏感文件后创建 GitHub remote 并推送。
 
 ### 验证记录
 
@@ -39,7 +39,14 @@
 - `python -m unittest discover -s router/tests -p 'test_*.py' -v`：3 项通过。
 - `python -m unittest discover -s checkin/tests -p 'test_*.py' -v`：1 项通过。
 - `docker compose config --quiet`（注入临时测试环境变量）：通过。
-- `docker version`：失败，Docker Desktop Linux engine 未运行，因此镜像构建和容器启动暂未验证。
+- Docker Engine 29.6.1：已恢复。
+- 四个镜像构建：通过（`router`、`qoder`、`codebuddy`、`checkin`）。
+- `docker compose up -d`：通过；`qoder`、`codebuddy`、`router` 均 healthy。
+- `GET /health`、`GET /health/ready`：通过；两个 provider 均报告可达。
+- 无网关 key 的 `/v1/models`：401；带网关 key 的 `/v1/models`：返回 `qoder/` 和 `codebuddy/` 聚合模型。
+- Qoder 容器 SQLite bootstrap：`auth_required=True`，测试后端 key 已写入 `allowed_keys`。
+- 无上游账号时，Qoder/CodeBuddy 对话请求按预期返回无可用账号错误；不是镜像启动故障。
+- `docker compose --profile checkin up -d --build checkin`：通过；日志显示默认仅启用 Trae 调度器。
 
 ### 注意事项
 

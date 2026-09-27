@@ -64,7 +64,8 @@
 - `router` 默认 fail-closed；`GATEWAY_API_KEYS` 为空时 `/v1/*` 仍返回 401，只有显式 `ALLOW_ANONYMOUS=1` 才允许匿名。
 - 增加 `/v1/responses` 和 `/health/ready`；Responses/Messages 固定转发到 codebuddy，Chat 按模型前缀路由。
 - Qoder 镜像增加 `qoder-entrypoint.py`，每次启动把 `QODER_BACKEND_KEY` 幂等写入 `allowed_keys`，并由 `QODER_REQUIRE_AUTH` 控制是否强制后端鉴权。
-- Compose 增加 provider 健康检查和 router 的健康依赖；Docker engine 未运行，尚未完成实际镜像构建。
+- Compose 增加 provider 健康检查和 router 的健康依赖；实际 Docker 构建和启动已完成。
+- Qoder wheel 缺少打包后的 `static/assets`；Dockerfile 通过保留完整源码树并设置 `PYTHONPATH=/app/src` 修复运行时静态资源查找。
 - 签到账号执行统一收集每个账号结果；Windows 导出在任一 provider 解密失败时不覆盖旧配置，成功时原子替换。
 - mock 测试已覆盖鉴权、模型列表、provider key 隔离、三种协议和 SSE 透传。
 
@@ -77,8 +78,8 @@
 
 ## 待验证问题
 
-- Qoder 初次启动如何以非交互方式可靠写入 `auth_required=true` 和 `allowed_keys`，以及控制台 API 是否适合做一次性 bootstrap。
-- Qoder 前端构建、Linux 运行和账号 PAT 导入在当前 Docker engine 上是否成功。
-- codebuddy2api 自写独立镜像是否遗漏 admin server 的运行时文件或静态资源。
-- router 对 `/v1/responses` 的请求体、流式格式和 codebuddy 错误码是否需要协议适配，而不是简单转发。
-- Docker engine 启动后四个服务的健康检查、数据卷权限和重启行为。
+- Qoder 的 SQLite bootstrap 已在容器内验证：`auth_required=True`，`QODER_BACKEND_KEY` 幂等写入 `allowed_keys`；账号导入仍需在部署机控制台完成。
+- Qoder 前端构建和 Linux 运行已在 Docker Engine 29.6.1 上通过；未导入 PAT 时对话接口会明确返回无可用账号。
+- codebuddy2api 自写独立镜像已构建并通过 `/health` 探活；未导入账号时返回无可用账号，auth/management 卷已挂载。
+- router 的 `/v1/responses`、`/v1/messages`、模型聚合和 key 隔离已通过 mock 与真实容器健康验证；真实模型协议回归需要有效上游账号。
+- Docker engine 已完成四镜像构建、Compose 启动、健康检查和签到 profile 启动验证；数据卷备份/恢复文档仍需补齐。

@@ -97,6 +97,8 @@ docker compose logs -f checkin
 | POST | `/v1/responses` | OpenAI Responses（固定走 codebuddy 后端） |
 | POST | `/v1/messages` | Anthropic 兼容（固定走 codebuddy 后端） |
 
+部署升级、数据卷备份恢复和故障排查见 [`docs/operations.md`](docs/operations.md)。
+
 ## 安全提示
 
 - `router` 是唯一对外端口。默认要求 `GATEWAY_API_KEYS`；即使为空也会拒绝 `/v1` 请求，只有显式设置 `ALLOW_ANONYMOUS=1` 才允许匿名。

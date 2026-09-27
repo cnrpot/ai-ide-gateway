@@ -16,7 +16,8 @@ RUN npm ci && npm run build && rm -rf node_modules
 FROM python:3.11-slim
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 \
-    QODER_HOST=0.0.0.0 QODER_PORT=5050 HOME=/data
+    QODER_HOST=0.0.0.0 QODER_PORT=5050 HOME=/data \
+    PYTHONPATH=/app/src
 
 RUN pip install --no-cache-dir \
       "cryptography>=43.0.0" "fastapi>=0.115.0" "httpx>=0.27.0" "uvicorn[standard]>=0.30.6"
