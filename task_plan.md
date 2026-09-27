@@ -125,5 +125,5 @@
 
 - GitHub：<https://github.com/cnrpot/ai-ide-gateway>
 - 默认分支：`main`
-- 发布提交：`6c8002f`
+- 最新发布提交：`4dfa4dd`（统一工作台功能提交：`bef0a50`）
 - 部署前仍需在目标机器导入真实 Qoder/CodeBuddy 账号，并按 `.env.example` 设置密钥；没有上游账号时网关只能完成健康检查和模型探测。
