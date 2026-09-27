@@ -63,6 +63,7 @@
 - 无上游账号时，Qoder/CodeBuddy 对话请求按预期返回无可用账号错误；不是镜像启动故障。
 - `docker compose --profile checkin up -d --build checkin`：通过；日志显示默认仅启用 Trae 调度器。
 - GitHub 公开仓库已创建并推送：<https://github.com/cnrpot/ai-ide-gateway>；官方 tarball 干净归档已通过编译、单元测试、四镜像重建、临时端口启动、健康检查和模型聚合验证。
+- 本轮统一工作台提交 `bef0a50` 已成功推送到 GitHub `main`。
 
 ### 注意事项
 

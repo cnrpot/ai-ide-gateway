@@ -85,6 +85,7 @@
 - `/qoder`、`/codebuddy` 路径代理仍保留用于兼容和排障，但统一工作台不再依赖或链接它们。
 - Docker 重建后真实 `/panel/api/overview` 返回 Qoder 和 CodeBuddy 管理状态 `ok`；响应未包含面板密钥、后端密钥或测试 token。
 - 真实签到配置回归已完成：测试账号可通过页面写入、读取时只返回 `token_configured`/`token_hint`，删除后账号数归零；测试配置已清理。
+- 统一工作台代码已提交为 `bef0a50` 并推送到 GitHub `main`。
 
 ## 待验证问题
 

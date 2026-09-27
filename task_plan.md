@@ -100,7 +100,7 @@
 - [x] 在同一页面加入 Qoder 账号/PAT/Token/配额、WorkBuddy 授权/账号池/API Key、三家签到配置和立即执行操作。
 - [x] 共享宿主机 `checkin` 配置目录，支持不启动独立 profile 时从工作台手动执行签到。
 - [x] 重建 Docker 并完成真实容器内的统一 overview、Qoder/CodeBuddy 管理 API 和签到配置操作验证。
-- [x] 创建本地提交；推送在当前网络可用时执行。
+- [x] 创建并推送提交 `bef0a50` 到 GitHub `main`。
 
 ## 验收标准
 
