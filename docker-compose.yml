@@ -5,7 +5,8 @@ services:
   # ---------- 统一对外入口 ----------
   router:
     build:
-      context: ./router
+      context: .
+      dockerfile: docker/router.Dockerfile
     image: ai-ide-gateway/router
     restart: unless-stopped
     ports:
@@ -15,7 +16,9 @@ services:
       QODER_BASE_URL: http://qoder:5050
       CODEBUDDY_BASE_URL: http://codebuddy:8787
       QODER_BACKEND_KEY: ${QODER_BACKEND_KEY:-}
+      QODER_ADMIN_PASSWORD: ${QODER_ADMIN_PASSWORD:?请在 .env 设置 QODER_ADMIN_PASSWORD}
       CODEBUDDY_BACKEND_KEY: ${CODEBUDDY_BACKEND_KEY:-}
+      CODEBUDDY_ADMIN_KEY: ${CODEBUDDY_ADMIN_KEY:-}
       DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-codebuddy}
       ALLOW_ANONYMOUS: ${ALLOW_ANONYMOUS:-0}
       QODER_MODELS: ${QODER_MODELS:-lite}
@@ -26,6 +29,10 @@ services:
       PANEL_ADMIN_KEY: ${PANEL_ADMIN_KEY:?请在 .env 设置 PANEL_ADMIN_KEY}
       PANEL_COOKIE_SECURE: ${PANEL_COOKIE_SECURE:-0}
       PANEL_BASE_DOMAIN: ${PANEL_BASE_DOMAIN:-localhost}
+      CHECKIN_CONFIG: /data/checkin/config.json
+      CHECKIN_LOG: /data/checkin/checkin.log
+    volumes:
+      - ./checkin:/data/checkin
     depends_on:
       qoder:
         condition: service_healthy
@@ -47,7 +54,7 @@ services:
     environment:
       QODER_HOST: 0.0.0.0
       QODER_PORT: "5050"
-      QODER_ADMIN_PASSWORD: ${QODER_ADMIN_PASSWORD:-admin}
+      QODER_ADMIN_PASSWORD: ${QODER_ADMIN_PASSWORD:?请在 .env 设置 QODER_ADMIN_PASSWORD}
       QODER_PAT: ${QODER_PAT:-}
       QODER_BACKEND_KEY: ${QODER_BACKEND_KEY:?请在 .env 设置 QODER_BACKEND_KEY}
       QODER_REQUIRE_AUTH: ${QODER_REQUIRE_AUTH:-1}
@@ -98,14 +105,12 @@ services:
       CHECKIN_TIME_TRAE: ${CHECKIN_TIME_TRAE:-08:30}
       CHECKIN_TIME_QODER: ${CHECKIN_TIME_QODER:-10:05}
       CHECKIN_TIME_WORKBUDDY: ${CHECKIN_TIME_WORKBUDDY:-08:35}
-      CHECKIN_CONFIG: /app/checkin/config.json
-      CHECKIN_LOG: /data/checkin.log
+      CHECKIN_CONFIG: /data/checkin/config.json
+      CHECKIN_LOG: /data/checkin/checkin.log
     volumes:
-      - ./checkin/config.json:/app/checkin/config.json:ro
-      - checkin-log:/data
+      - ./checkin:/data/checkin
 
 volumes:
   qoder-data:
   codebuddy-auth:
   codebuddy-management:
-  checkin-log:

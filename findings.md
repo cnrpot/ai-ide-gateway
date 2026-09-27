@@ -76,13 +76,15 @@
 - Qoder 和 CodeBuddy 不再发布宿主机管理端口；控制台通过 router 的单端口路径或主机名路由访问，对外部署仍建议配置 HTTPS 反代。
 - Trae token 从 Windows 导出脚本进入容器，是能力边界而不是自动刷新机制；临期后需要用户打开客户端重新导出。
 
-## 统一面板与路径聚合复核
+## 统一工作台复核
 
-- 面板入口为 `/panel/`，由 `PANEL_ADMIN_KEY` 保护，登录会话使用 HMAC 签名 Cookie，状态接口并行探测 Qoder 和 CodeBuddy。
-- 面板默认返回 `http://<当前主机>:8080/qoder/` 与 `http://<当前主机>:8080/codebuddy/admin/`，不依赖 Windows 对 `*.localhost` 的解析；`qoder.<域名>` 和 `codebuddy.<域名>` 主机名路由仍保留。
-- 路径代理把 `/qoder`、`/codebuddy` 前缀去掉后请求内部服务，再对 HTML、JavaScript、CSS、Location 和 CodeBuddy `Set-Cookie: Path=/admin` 做反向改写。
-- 本机 `PANEL_COOKIE_SECURE=0` 且请求主机为 `localhost` 时，代理移除后端 `Secure` Cookie 属性，确保管理会话能在 HTTP 下继续发送；生产 HTTPS 应设置 `PANEL_COOKIE_SECURE=1`。
-- Docker 端到端验证确认只发布 `8080`，直接访问宿主机 `5050`/`8787` 失败；路径页面、静态资源、CodeBuddy 登录和管理 API 均通过同一入口工作。
+- 面板入口为 `/panel/`，由 `PANEL_ADMIN_KEY` 保护，登录会话使用 HMAC 签名 Cookie；`/panel/api/overview` 聚合网关、Qoder、CodeBuddy 和签到状态。
+- Qoder 管理适配器使用内部 `QODER_ADMIN_PASSWORD` 调用 `/ui/*`，只返回账号元数据、状态和配额，不把 token 返回给浏览器。
+- CodeBuddy 管理适配器使用内部 `CODEBUDDY_ADMIN_KEY` 自动建立 admin session/CSRF，然后调用账号池、密钥、授权和签到 API；浏览器不接触该密钥。
+- router 镜像包含签到模块并共享 `./checkin` 目录，工作台可以维护脱敏账号列表并在不启动独立 scheduler profile 时手动执行一次签到。
+- `/qoder`、`/codebuddy` 路径代理仍保留用于兼容和排障，但统一工作台不再依赖或链接它们。
+- Docker 重建后真实 `/panel/api/overview` 返回 Qoder 和 CodeBuddy 管理状态 `ok`；响应未包含面板密钥、后端密钥或测试 token。
+- 真实签到配置回归已完成：测试账号可通过页面写入、读取时只返回 `token_configured`/`token_hint`，删除后账号数归零；测试配置已清理。
 
 ## 待验证问题
 

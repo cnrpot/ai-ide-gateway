@@ -10,9 +10,9 @@
 ## 架构
 
 ```
-   管理面板 :8080 ──┬─ localhost:8080                  ─► router / panel
-                   ├─ localhost:8080/qoder/           ─► qoder 控制台 :5050
-                   └─ localhost:8080/codebuddy/admin/ ─► codebuddy 控制台 :8787
+   统一工作台 :8080 ──► router / panel ──┬─ Qoder 管理 API       :5050
+                                         ├─ WorkBuddy 管理 API   :8787
+                                         └─ Trae/Qoder/WB 签到配置与执行器
 
    OpenAI 客户端 ──Bearer <网关key>──► router :8080  ──┬─ model=qoder/*     ─► qoder     :5050 ─► api2-v2.qoder.sh
    /v1/chat/completions /v1/responses /v1/messages  └─ model=codebuddy/* ─► codebuddy :8787 ─► copilot.tencent.com
@@ -36,7 +36,7 @@ cd ai-ide-gateway
 
 # 2. 配置
 cp .env.example .env
-#   至少设置：GATEWAY_API_KEYS、PANEL_ADMIN_KEY、QODER_BACKEND_KEY、CODEBUDDY_ADMIN_KEY、CODEBUDDY_BACKEND_KEY
+#   至少设置：GATEWAY_API_KEYS、PANEL_ADMIN_KEY、QODER_BACKEND_KEY、QODER_ADMIN_PASSWORD、CODEBUDDY_ADMIN_KEY、CODEBUDDY_BACKEND_KEY
 
 # 3. 启动（router + qoder + codebuddy）
 docker compose up -d --build
@@ -45,24 +45,20 @@ docker compose up -d --build
 curl http://localhost:8080/health
 ```
 
-## 统一管理面板
+## 统一工作台
 
-启动后访问 `http://localhost:8080/`，输入 `PANEL_ADMIN_KEY`。面板会显示网关、Qoder、CodeBuddy 和签到 profile 的状态，并提供两个原生控制台入口：
+启动后访问 `http://localhost:8080/`，输入 `PANEL_ADMIN_KEY`。这是实际的单页管理工作台，不会把你跳转到三个原生控制台。页面直接提供：
 
-- `http://localhost:8080/qoder/`：Qoder 控制台；
-- `http://localhost:8080/codebuddy/admin/`：WorkBuddy / CodeBuddy 控制台。
+- Qoder PAT 添加、批量导入、账号启停/切换、Token 刷新和配额查询；
+- WorkBuddy / CodeBuddy 授权、账号池调度、单账号/批量签到、额度刷新和客户端 API Key 管理；
+- Trae、Qoder、WorkBuddy 签到账号的脱敏列表、添加/删除和立即执行；
+- 网关健康状态、模型路由、签到日志和四个模块的统一概览。
 
-两个后端不再发布宿主机端口，全部通过 router 的 8080 端口转发。路径入口适合本机和单域名部署；同时仍支持 `qoder.<域名>`、`codebuddy.<域名>` 主机名路由。生产 HTTPS 反代后设置 `PANEL_COOKIE_SECURE=1`。
+Qoder 和 CodeBuddy 端口只在 Compose 内网开放，页面由 router 使用各自后端的管理 API 完成操作。旧的 `/qoder/`、`/codebuddy/` 原生路径仍保留作兼容排障入口，但日常管理不需要使用它们。
 
 ## 账号纳管
 
-Docker 里读不到你 Windows 本地客户端的加密登录态，所以账号通过各自控制台在线纳管：
-
-- **Qoder**：从统一面板打开 Qoder 控制台 → 用 `QODER_ADMIN_PASSWORD` 登录 →
-  用 PAT 导入账号（或在 `.env` 里预填 `QODER_PAT` 首次自动导入）。Qoder 的签到由它自动完成。
-  容器启动时会把 `QODER_BACKEND_KEY` 写入 Qoder 的 SQLite `allowed_keys`，router 才能安全转发。
-- **WorkBuddy/CodeBuddy**：从统一面板打开 WorkBuddy 控制台 → 用 `CODEBUDDY_ADMIN_KEY` 登录 →
-  扫码授权 CN 账号。它自带账号池轮询 + 每日签到（默认 09:00）。
+Docker 里读不到 Windows 客户端的加密登录态。启动后直接在统一工作台的 Qoder、WorkBuddy 标签页添加账号即可；页面只返回账号名、UID、状态、额度和脱敏提示，不回显 token。Qoder 容器启动时会把 `QODER_BACKEND_KEY` 写入 SQLite `allowed_keys`，router 才能安全转发。
 
 ## 模型命名与路由
 
@@ -83,7 +79,7 @@ curl http://localhost:8080/v1/chat/completions \
 
 ## 签到
 
-Qoder / WorkBuddy 的签到已由各自后端自动完成，**独立签到服务默认只跑 Trae**。
+统一工作台的“统一签到”标签页可以直接维护三家的 token 并立即执行签到。Qoder / WorkBuddy 后端仍保留各自的自动签到能力；独立 scheduler 适合无人值守的定时执行。
 
 ```bash
 # 1. 在你的 Windows 机器上导出本地 token（只读客户端登录态，不改任何文件）
@@ -91,10 +87,12 @@ pip install pycryptodome
 python checkin/extract_tokens_windows.py        # 生成 checkin/config.json
 #   或手动 cp checkin/config.example.json checkin/config.json 后填 token
 
-# 2. 启用签到容器
+# 2. 可选：启用定时签到容器
 docker compose --profile checkin up -d --build
 docker compose logs -f checkin
 ```
+
+也可以不启动 profile，直接在统一工作台点击某一家“立即签到”；router 会使用共享的 `checkin/config.json` 执行一次。
 
 - 签到只读 token、不自动刷新 refresh token（刷新会导致客户端登出）。token 临期需开一次客户端刷新。
 - 签到时刻、开关见 `.env` 的 `CHECKIN_*`。手动跑一次：`python -m checkin.scheduler --once`。
@@ -115,7 +113,7 @@ docker compose logs -f checkin
 ## 安全提示
 
 - `router` 是唯一对外端口。默认要求 `GATEWAY_API_KEYS`；即使为空也会拒绝 `/v1` 请求，只有显式设置 `ALLOW_ANONYMOUS=1` 才允许匿名。
-- 两个控制台不再单独发布宿主机端口，只能经 router 的主机名路由访问；对外请加 HTTPS 反向代理并配置 `PANEL_COOKIE_SECURE=1`。
+- Qoder、CodeBuddy 管理端口不发布到宿主机；统一工作台是唯一管理入口。对外部署请加 HTTPS 反向代理并配置 `PANEL_COOKIE_SECURE=1`。
 - `checkin/config.json` 含明文 token，已在 `.gitignore` 中，切勿提交或外传。
 
 ## 目录结构

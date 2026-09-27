@@ -27,6 +27,7 @@ from .panel import (
     set_session_cookie,
     valid_session,
 )
+from .management import ManagementError, ManagementHub
 from .routing import resolve
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [router] %(message)s")
@@ -41,6 +42,7 @@ async def _startup() -> None:
     app.state.client = httpx.AsyncClient(
         timeout=httpx.Timeout(settings.request_timeout, connect=settings.connect_timeout)
     )
+    app.state.management = ManagementHub(app.state.client)
     if settings.allow_anonymous:
         log.warning("ALLOW_ANONYMOUS=1：网关 API 鉴权已显式关闭")
     elif not settings.gateway_keys:
@@ -63,6 +65,26 @@ def _client() -> httpx.AsyncClient:
         )
         app.state.client = client
     return client
+
+
+def _management() -> ManagementHub:
+    hub = getattr(app.state, "management", None)
+    if hub is None:
+        hub = ManagementHub(_client())
+        app.state.management = hub
+    return hub
+
+
+def _panel_guard(request: Request) -> JSONResponse | None:
+    if not panel_enabled():
+        return JSONResponse({"detail": "未配置 PANEL_ADMIN_KEY"}, status_code=503)
+    if not valid_session(request):
+        return JSONResponse({"detail": "需要登录管理面板"}, status_code=401)
+    return None
+
+
+def _management_error(exc: ManagementError) -> JSONResponse:
+    return JSONResponse({"detail": exc.message}, status_code=exc.status_code)
 
 
 def _backend_for_host(hostname: str | None) -> ProviderConfig | None:
@@ -326,6 +348,132 @@ async def panel_status(request: Request) -> JSONResponse:
             "checkin": {"status": "profile-managed", "profile": "checkin"},
         }
     )
+
+
+@app.get("/panel/api/overview")
+async def panel_overview(request: Request) -> JSONResponse:
+    """Return all provider management data used by the single-page console."""
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    pairs = await asyncio.gather(
+        *(_provider_probe(name, provider) for name, provider in settings.providers.items())
+    )
+    probes = dict(pairs)
+    try:
+        payload = await _management().overview(probes)
+    except ManagementError as exc:
+        return _management_error(exc)
+    return JSONResponse(payload)
+
+
+@app.get("/panel/api/qoder/overview")
+async def panel_qoder_overview(request: Request) -> JSONResponse:
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    try:
+        return JSONResponse(await _management().qoder.overview())
+    except ManagementError as exc:
+        return _management_error(exc)
+
+
+@app.post("/panel/api/qoder/action")
+async def panel_qoder_action(request: Request) -> JSONResponse:
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    try:
+        body = await request.json()
+        return JSONResponse(await _management().qoder.action(body if isinstance(body, dict) else {}))
+    except ManagementError as exc:
+        return _management_error(exc)
+    except ValueError:
+        return JSONResponse({"detail": "请求不是有效 JSON"}, status_code=400)
+
+
+@app.get("/panel/api/codebuddy/overview")
+async def panel_codebuddy_overview(request: Request) -> JSONResponse:
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    try:
+        return JSONResponse(await _management().codebuddy.overview())
+    except ManagementError as exc:
+        return _management_error(exc)
+
+
+@app.post("/panel/api/codebuddy/action")
+async def panel_codebuddy_action(request: Request) -> JSONResponse:
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    try:
+        body = await request.json()
+        return JSONResponse(await _management().codebuddy.action(body if isinstance(body, dict) else {}))
+    except ManagementError as exc:
+        return _management_error(exc)
+    except ValueError:
+        return JSONResponse({"detail": "请求不是有效 JSON"}, status_code=400)
+
+
+@app.get("/panel/api/checkin")
+async def panel_checkin_overview(request: Request) -> JSONResponse:
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    try:
+        return JSONResponse(await asyncio.to_thread(_management().checkin.overview))
+    except ManagementError as exc:
+        return _management_error(exc)
+
+
+@app.post("/panel/api/checkin/accounts")
+async def panel_checkin_account(request: Request) -> JSONResponse:
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    try:
+        body = await request.json()
+        if not isinstance(body, dict):
+            raise ManagementError("请求格式无效", 400)
+        provider = str(body.get("provider") or "")
+        account = body.get("account")
+        return JSONResponse(
+            await asyncio.to_thread(_management().checkin.save_account, provider, account)
+        )
+    except ManagementError as exc:
+        return _management_error(exc)
+    except ValueError:
+        return JSONResponse({"detail": "请求不是有效 JSON"}, status_code=400)
+
+
+@app.delete("/panel/api/checkin/accounts/{provider}/{index}")
+async def panel_checkin_delete(request: Request, provider: str, index: int) -> JSONResponse:
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    try:
+        return JSONResponse(
+            await asyncio.to_thread(_management().checkin.delete_account, provider, index)
+        )
+    except ManagementError as exc:
+        return _management_error(exc)
+
+
+@app.post("/panel/api/checkin/run")
+async def panel_checkin_run(request: Request) -> JSONResponse:
+    denied = _panel_guard(request)
+    if denied is not None:
+        return denied
+    try:
+        body = await request.json()
+        provider = str(body.get("provider") or "") if isinstance(body, dict) else ""
+        return JSONResponse(await asyncio.to_thread(_management().checkin.run, provider))
+    except ManagementError as exc:
+        return _management_error(exc)
+    except ValueError:
+        return JSONResponse({"detail": "请求不是有效 JSON"}, status_code=400)
 
 
 @app.get("/health/ready")

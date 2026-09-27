@@ -47,6 +47,20 @@ class Settings:
     health_timeout: float = field(default_factory=lambda: _float("HEALTH_TIMEOUT", 5.0))
     panel_admin_key: str = field(default_factory=lambda: os.environ.get("PANEL_ADMIN_KEY", "").strip())
     panel_cookie_secure: bool = field(default_factory=lambda: _bool("PANEL_COOKIE_SECURE", False))
+    qoder_admin_password: str = field(
+        default_factory=lambda: os.environ.get("QODER_ADMIN_PASSWORD", "").strip()
+    )
+    codebuddy_admin_key: str = field(
+        default_factory=lambda: os.environ.get("CODEBUDDY_ADMIN_KEY", "").strip()
+    )
+    checkin_config_path: str = field(
+        default_factory=lambda: os.environ.get("CHECKIN_CONFIG", "/data/checkin/config.json").strip()
+        or "/data/checkin/config.json"
+    )
+    checkin_log_path: str = field(
+        default_factory=lambda: os.environ.get("CHECKIN_LOG", "/data/checkin/checkin.log").strip()
+        or "/data/checkin/checkin.log"
+    )
     panel_base_domain: str = field(
         default_factory=lambda: os.environ.get("PANEL_BASE_DOMAIN", "localhost").strip() or "localhost"
     )

@@ -4,13 +4,13 @@
 
 ```bash
 cp .env.example .env
-# 编辑 .env，至少设置 GATEWAY_API_KEYS、QODER_BACKEND_KEY、
-# CODEBUDDY_ADMIN_KEY 和 CODEBUDDY_BACKEND_KEY
+# 编辑 .env，至少设置 GATEWAY_API_KEYS、PANEL_ADMIN_KEY、QODER_BACKEND_KEY、
+# QODER_ADMIN_PASSWORD、CODEBUDDY_ADMIN_KEY 和 CODEBUDDY_BACKEND_KEY
 docker compose up -d --build
 docker compose ps
 ```
 
-默认只发布 `8080` 一个宿主机端口。统一面板地址是 `http://localhost:8080/`；面板里的 Qoder 和 CodeBuddy 链接分别使用 `http://localhost:8080/qoder/` 与 `http://localhost:8080/codebuddy/admin/`，由 router 反向代理到内部服务。
+默认只发布 `8080` 一个宿主机端口。`http://localhost:8080/` 是统一工作台，直接管理 Qoder、WorkBuddy/CodeBuddy 和三家签到，不依赖原生控制台页面。
 
 升级源码后重新构建并滚动重启：
 
@@ -29,7 +29,7 @@ Compose 默认创建以下卷：
 - `ai-ide-gateway_qoder-data`：Qoder SQLite、账号和配置；
 - `ai-ide-gateway_codebuddy-auth`：CodeBuddy 登录凭据；
 - `ai-ide-gateway_codebuddy-management`：CodeBuddy 管理数据；
-- `ai-ide-gateway_checkin-log`：签到日志。
+- `./checkin`：共享签到配置和日志（`config.json`、`checkin.log` 被 Git 忽略）。
 
 实际卷名以 `docker volume ls` 为准；如果使用了自定义 Compose project name，前缀会随之变化。
 
@@ -39,26 +39,28 @@ Compose 默认创建以下卷：
 
 ```bash
 mkdir -p backups
-docker compose stop qoder codebuddy checkin
+docker compose stop router qoder codebuddy checkin
 docker run --rm -v ai-ide-gateway_qoder-data:/source -v "$PWD/backups:/backup" alpine \
   tar czf /backup/qoder-data.tgz -C /source .
 docker run --rm -v ai-ide-gateway_codebuddy-auth:/source -v "$PWD/backups:/backup" alpine \
   tar czf /backup/codebuddy-auth.tgz -C /source .
 docker run --rm -v ai-ide-gateway_codebuddy-management:/source -v "$PWD/backups:/backup" alpine \
   tar czf /backup/codebuddy-management.tgz -C /source .
+tar czf backups/checkin-config.tgz -C checkin config.json checkin.log 2>/dev/null || true
 docker compose start qoder codebuddy checkin
 ```
 
 恢复前停止服务，并确认目标卷就是当前 Compose 项目创建的卷：
 
 ```bash
-docker compose stop qoder codebuddy checkin
+docker compose stop router qoder codebuddy checkin
 docker run --rm -v ai-ide-gateway_qoder-data:/target -v "$PWD/backups:/backup" alpine \
   sh -c 'rm -rf /target/* && tar xzf /backup/qoder-data.tgz -C /target'
 docker run --rm -v ai-ide-gateway_codebuddy-auth:/target -v "$PWD/backups:/backup" alpine \
   sh -c 'rm -rf /target/* && tar xzf /backup/codebuddy-auth.tgz -C /target'
 docker run --rm -v ai-ide-gateway_codebuddy-management:/target -v "$PWD/backups:/backup" alpine \
   sh -c 'rm -rf /target/* && tar xzf /backup/codebuddy-management.tgz -C /target'
+tar xzf backups/checkin-config.tgz -C checkin 2>/dev/null || true
 docker compose up -d
 ```
 
@@ -73,17 +75,13 @@ curl http://localhost:8080/health
 curl http://localhost:8080/health/ready
 ```
 
-`/health` 只表示 router 进程存活；`/health/ready` 会探测两个后端。若后端健康但对话返回“无可用账号”，请从统一面板打开对应控制台导入或授权账号。真实对话请求不能在没有上游账号时完成。
+`/health` 只表示 router 进程存活；`/health/ready` 会探测两个后端。若后端健康但对话返回“无可用账号”，请登录统一工作台，在 Qoder 或 WorkBuddy 标签页导入/授权账号。真实对话请求不能在没有上游账号时完成。
 
-## 面板与主机名路由
+## 统一工作台
 
-面板需要 `PANEL_ADMIN_KEY`。它只保护面板状态 API；Qoder 和 CodeBuddy 原生控制台仍使用各自的管理密码/管理密钥。路径入口可直接用于本机和单域名部署；生产环境也可以让 HTTPS 反向代理转发以下三个主机名到同一个 router：
+工作台需要 `PANEL_ADMIN_KEY`，登录后由 router 使用 `QODER_ADMIN_PASSWORD` 和 `CODEBUDDY_ADMIN_KEY` 调用内部管理 API。浏览器只接触工作台会话，不接触后端管理密钥。工作台提供账号、密钥、调度、配额、签到配置和立即签到操作；所有敏感 token 只写入后端存储并在列表中脱敏。
 
-- `panel.<域名>` 或根域名：统一面板；
-- `qoder.<域名>`：Qoder 原生控制台；
-- `codebuddy.<域名>`：CodeBuddy 原生控制台。
-
-将 `PANEL_BASE_DOMAIN` 设置成对应基础域名，并把 `PANEL_COOKIE_SECURE=1`。本机使用 `localhost` 时无需改 hosts 文件。
+`/qoder/`、`/codebuddy/` 路径代理只为兼容旧排障流程保留。日常操作请使用根路径的统一工作台；生产 HTTPS 反代后设置 `PANEL_COOKIE_SECURE=1`。
 
 启用 Trae 签到：在 Windows 上运行 `checkin/extract_tokens_windows.py` 生成 `checkin/config.json`，然后执行：
 

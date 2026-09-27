@@ -19,7 +19,7 @@
 4. **上游引入方式**：当前网络环境无法稳定执行 `git clone`，三个目录先固定为官方 ZIP 对应的源码快照，并在 `NOTICE` 和来源清单中记录 URL、提交 SHA、许可证。恢复 submodule 作为后续可选维护工作，不能让当前构建依赖网络上的 submodule。
 5. **凭证**：容器不读取 Windows 客户端的本地加密凭证。Qoder/WorkBuddy 通过各自控制台纳管账号；Trae 由 Windows helper 只读导出 token 到被挂载的 `checkin/config.json`。不自动刷新 refresh token。
 6. **安全默认值**：router 默认要求网关 API key；健康检查可以公开，模型和对话接口必须鉴权。后端管理端口不发布到宿主机，敏感卷不提交 Git。
-7. **统一面板入口**：router 只发布宿主机 `8080`；面板默认使用 `/qoder/` 和 `/codebuddy/admin/` 路径入口，避免本机依赖 `*.localhost` 解析，同时保留主机名路由供域名部署。
+7. **统一工作台入口**：router 只发布宿主机 `8080`；用户在一个页面直接管理四个模块。`/qoder/` 和 `/codebuddy/admin/` 仅作为兼容排障路径保留。
 
 ## 阶段和状态
 
@@ -85,7 +85,7 @@
 - [x] 配置 GitHub remote；本次创建公开仓库 `cnrpot/ai-ide-gateway` 并推送 `main`。
 - [x] push 后用 GitHub 干净发布归档验证源码测试、镜像构建和最小启动流程（当前网络的 Git fetch 会卡住，因此使用官方 tarball 复核）。
 
-### 阶段 7：统一管理面板与单端口聚合 — `complete`
+### 阶段 7：单端口兼容层 — `complete`
 
 - [x] 增加面板登录、HMAC 会话 Cookie、登出、状态探测和控制台链接 API。
 - [x] 让 Qoder、WorkBuddy/CodeBuddy 控制台通过 router 的 `/qoder/`、`/codebuddy/` 路径访问，并重写 HTML、JavaScript、CSS、Location 和 Cookie 路径。
@@ -93,10 +93,19 @@
 - [x] 增加路径代理和本机 Cookie 行为的单元测试。
 - [x] 使用 Docker Engine 29.6.1 重建并验证面板、两条路径入口、CodeBuddy 管理会话和端口收敛。
 
+### 阶段 8：单页统一工作台 — `complete`
+
+- [x] 审查 Qoder `/ui/*`、CodeBuddy `/admin/api/*` 和签到脚本的可复用管理接口。
+- [x] 新增 router 管理适配层和统一 `/panel/api/overview` 聚合接口，屏蔽 Provider 管理密钥。
+- [x] 在同一页面加入 Qoder 账号/PAT/Token/配额、WorkBuddy 授权/账号池/API Key、三家签到配置和立即执行操作。
+- [x] 共享宿主机 `checkin` 配置目录，支持不启动独立 profile 时从工作台手动执行签到。
+- [x] 重建 Docker 并完成真实容器内的统一 overview、Qoder/CodeBuddy 管理 API 和签到配置操作验证。
+- [x] 创建本地提交；推送在当前网络可用时执行。
+
 ## 验收标准
 
 - `docker compose config` 通过，router、Qoder、codebuddy 可以启动，checkin profile 可选启动。
-- 统一面板可登录并显示两个后端健康状态；Qoder 和 CodeBuddy 控制台均能从 `8080` 路径入口打开。
+- 统一工作台可登录并在一个页面显示和操作 Qoder、WorkBuddy/CodeBuddy、Trae 签到及网关状态。
 - `docker compose ps` 只显示 router 的宿主机端口映射，后端端口不直接暴露。
 - `/health` 可用；`/v1/models` 需要网关 key 且返回带 provider 前缀的模型；模型路由和三个协议入口均有自动化验证。
 - 流式和非流式请求均能正确透传或返回可诊断错误，后端密钥不会出现在响应和日志中。
@@ -110,7 +119,7 @@
 | 直接 `git clone` 三个 GitHub 仓库 | `github.com:443` 连接失败 | 使用 GitHub 官方 ZIP 归档，固定源码快照和提交 SHA |
 | 把 `workbuddy-manager` 直接当作 WorkBuddy 后端 | 依赖缺失的外部 Go `workbuddy2api`，接口/账号格式不兼容 | 仅作参考；若后续需要 UI，再单独补齐适配层或 Go 上游 |
 | 以 `QODER_BACKEND_KEY` 直接鉴权 Qoder | Qoder 实际读取 SQLite `auth_required`/`allowed_keys` | 阶段 2 增加初始化或明确首次配置步骤 |
-| 本机依赖 `*.localhost` 主机名访问控制台 | Windows 命令行和部分客户端解析不稳定 | 增加 `/qoder/` 与 `/codebuddy/` 路径代理，面板默认返回路径链接 |
+| 仅聚合原生控制台链接 | 仍需用户在多个页面管理账号和签到 | 新增统一管理适配层和单页操作界面，原生路径只保留兼容用途 |
 
 ## 发布记录
 

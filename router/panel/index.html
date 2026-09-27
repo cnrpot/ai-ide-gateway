@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>AI IDE Gateway · 统一管理面板</title>
+  <title>AI IDE Gateway · 统一工作台</title>
   <link rel="stylesheet" href="/panel/assets/style.css">
 </head>
 <body>
@@ -12,61 +12,90 @@
   <main class="shell">
     <section id="login" class="login-card">
       <div class="brand-mark">AI<span>·</span>IDE</div>
-      <p class="eyebrow">UNIFIED CONTROL PLANE</p>
-      <h1>一个入口，管理所有模型连接。</h1>
-      <p class="muted">Qoder、WorkBuddy / CodeBuddy 和 Trae 签到运行在同一个网关端口。</p>
+      <p class="eyebrow">UNIFIED WORKSPACE</p>
+      <h1>一个页面，管理全部账号与签到。</h1>
+      <p class="muted">网关、Qoder、WorkBuddy / CodeBuddy、Trae 签到都在这里完成配置、检查和操作。</p>
       <form id="login-form">
-        <label for="panel-key">面板管理密钥</label>
+        <label for="panel-key">工作台管理密钥</label>
         <input id="panel-key" type="password" autocomplete="current-password" placeholder="输入 PANEL_ADMIN_KEY" required>
-        <button class="primary" type="submit">进入管理面板 <span>↗</span></button>
+        <button class="primary" type="submit">进入统一工作台 <span>↗</span></button>
         <p id="login-error" class="error" role="alert"></p>
       </form>
-      <p class="hint">面板密钥只用于管理入口，不会转发给 Qoder 或 CodeBuddy。</p>
+      <p class="hint">工作台密钥只用于本页管理操作，Provider 密钥不会显示或下发到浏览器。</p>
     </section>
 
     <section id="workspace" hidden>
       <header class="topbar">
-        <div><p class="eyebrow">AI IDE GATEWAY</p><h1>统一管理面板<span>.</span></h1></div>
-        <div class="top-actions"><span id="last-updated" class="muted">等待状态</span><button id="refresh" class="ghost">刷新</button><button id="logout" class="ghost">退出</button></div>
+        <div><p class="eyebrow">AI IDE GATEWAY</p><h1>统一工作台<span>.</span></h1></div>
+        <div class="top-actions"><span id="last-updated" class="muted">等待数据</span><button id="refresh" class="ghost">刷新</button><button id="logout" class="ghost">退出</button></div>
       </header>
 
       <section class="hero">
-        <div><span class="status-dot online"></span><strong id="overall-status">正在检查服务</strong><p id="overall-detail" class="muted">面板会探测两个后端的健康状态。</p></div>
+        <div><span id="overall-dot" class="status-dot online"></span><strong id="overall-status">正在加载</strong><p id="overall-detail" class="muted">读取四个模块的运行状态与账号数据。</p></div>
         <div class="api-chip"><span>统一 API</span><code id="api-base">—</code><button id="copy-api" title="复制 API 地址">复制</button></div>
       </section>
 
-      <section class="grid">
-        <article class="service-card gateway-card">
-          <div class="card-top"><div class="service-icon">◎</div><span class="pill online">GATEWAY</span></div>
-          <h2>统一 Router</h2><p class="muted">OpenAI Chat、Responses、Anthropic Messages 与模型聚合。</p>
-          <div class="service-meta"><span>对外入口</span><code id="gateway-url">—</code></div>
-          <div class="card-actions"><a class="primary small" href="/docs/operations.md" target="_blank">运维文档 ↗</a></div>
-        </article>
-        <article class="service-card" data-provider="qoder">
-          <div class="card-top"><div class="service-icon qoder">Q</div><span id="qoder-status" class="pill pending">检查中</span></div>
-          <h2>Qoder</h2><p class="muted">账号池、PAT 导入、配额和 Qoder 控制台。</p>
-          <div class="service-meta"><span>状态</span><strong id="qoder-detail">—</strong></div>
-          <div class="card-actions"><a id="qoder-link" class="primary small" href="#" target="_blank" rel="noopener">打开 Qoder 控制台 ↗</a></div>
-        </article>
-        <article class="service-card" data-provider="codebuddy">
-          <div class="card-top"><div class="service-icon buddy">W</div><span id="codebuddy-status" class="pill pending">检查中</span></div>
-          <h2>WorkBuddy / CodeBuddy</h2><p class="muted">账号授权、API Key、模型测试和每日签到。</p>
-          <div class="service-meta"><span>状态</span><strong id="codebuddy-detail">—</strong></div>
-          <div class="card-actions"><a id="codebuddy-link" class="primary small" href="#" target="_blank" rel="noopener">打开 WorkBuddy 控制台 ↗</a></div>
-        </article>
-        <article class="service-card checkin-card">
-          <div class="card-top"><div class="service-icon checkin">◷</div><span class="pill neutral">PROFILE</span></div>
-          <h2>Trae 签到</h2><p class="muted">独立签到服务没有 HTTP 端口，由 Compose profile 管理。</p>
-          <div class="service-meta"><span>启动方式</span><code>--profile checkin</code></div>
-          <div class="card-actions"><a class="secondary small" href="https://github.com/cnrpot/ai-ide-gateway#签到" target="_blank" rel="noopener">查看签到说明 ↗</a></div>
-        </article>
+      <div id="flash" class="flash" role="status"></div>
+
+      <section class="summary-grid">
+        <article class="summary-card"><div class="summary-label">ROUTER</div><strong id="gateway-summary">—</strong><span id="gateway-detail" class="muted">模型路由</span></article>
+        <article class="summary-card qoder-tint"><div class="summary-label">QODER</div><strong id="qoder-summary">—</strong><span id="qoder-detail" class="muted">账号</span></article>
+        <article class="summary-card buddy-tint"><div class="summary-label">WORKBUDDY</div><strong id="codebuddy-summary">—</strong><span id="codebuddy-detail" class="muted">账号</span></article>
+        <article class="summary-card checkin-tint"><div class="summary-label">CHECK-IN</div><strong id="checkin-summary">—</strong><span id="checkin-detail" class="muted">Trae / Qoder / WorkBuddy</span></article>
       </section>
 
-      <section class="howto">
-        <div><p class="eyebrow">SINGLE PORT ACCESS</p><h2>所有控制台共享一个端口。</h2><p class="muted">本机访问时，网关根据主机名转发到对应后端，Qoder 和 CodeBuddy 的原生资源路径与登录流程保持不变。</p></div>
-        <div class="host-list"><code>http://localhost:8080</code><code>http://localhost:8080/qoder/</code><code>http://localhost:8080/codebuddy/admin/</code></div>
+      <nav class="tabs" aria-label="管理模块">
+        <button class="tab active" data-tab="overview">总览</button>
+        <button class="tab" data-tab="qoder">Qoder</button>
+        <button class="tab" data-tab="codebuddy">WorkBuddy / CodeBuddy</button>
+        <button class="tab" data-tab="checkin">统一签到</button>
+      </nav>
+
+      <section id="tab-overview" class="tab-panel active">
+        <div class="two-column">
+          <article class="work-card">
+            <div class="card-heading"><div><p class="eyebrow">GATEWAY</p><h2>统一路由</h2></div><span id="gateway-pill" class="pill online">ONLINE</span></div>
+            <p class="muted">所有客户端只需要一个 API 地址。模型使用 <code>qoder/&lt;模型&gt;</code> 或 <code>codebuddy/&lt;模型&gt;</code> 前缀选择后端。</p>
+            <div class="kv-list"><div><span>默认 Provider</span><strong id="default-provider">—</strong></div><div><span>Qoder 模型</span><strong id="qoder-models">—</strong></div><div><span>自定义路由</span><strong id="model-routes">—</strong></div></div>
+          </article>
+          <article class="work-card">
+            <div class="card-heading"><div><p class="eyebrow">QUICK ACTIONS</p><h2>常用操作</h2></div></div>
+            <div class="action-stack"><button class="secondary" data-jump="qoder">管理 Qoder 账号</button><button class="secondary" data-jump="codebuddy">管理 WorkBuddy 账号与密钥</button><button class="secondary" data-jump="checkin">配置并执行签到</button></div>
+          </article>
+        </div>
+        <article class="work-card activity-card"><div class="card-heading"><div><p class="eyebrow">ACTIVITY</p><h2>最近签到与操作日志</h2></div></div><pre id="activity-log" class="log-box">暂无日志</pre></article>
       </section>
-      <footer><span>AI IDE GATEWAY</span><span>Private deployment · one port · three providers</span></footer>
+
+      <section id="tab-qoder" class="tab-panel" hidden>
+        <div class="section-heading"><div><p class="eyebrow">QODER MANAGEMENT</p><h2>账号、PAT 与配额</h2><p class="muted">直接调用 Qoder 管理 API，账号凭据不会回显到浏览器。</p></div><div class="button-row"><button id="qoder-refresh-tokens" class="secondary">刷新全部 Token</button><button id="qoder-quota" class="secondary">查询配额</button></div></div>
+        <div class="two-column">
+          <article class="work-card"><h3>使用 PAT 添加账号</h3><form id="qoder-pat-form" class="inline-form"><input id="qoder-pat" type="password" placeholder="粘贴 Qoder PAT" required><button class="primary" type="submit">添加</button></form><p id="qoder-action-result" class="muted result-line"></p></article>
+          <article class="work-card"><h3>批量导入</h3><textarea id="qoder-batch" rows="4" placeholder='JSON 数组，例如 [{"user_id":"...","token":"...","name":"账号"}]'></textarea><button id="qoder-batch-import" class="secondary full-button">导入 JSON</button></article>
+        </div>
+        <article class="work-card"><div class="card-heading"><h3>Qoder 账号池</h3><span id="qoder-account-count" class="pill neutral">0 个账号</span></div><div class="table-wrap"><table><thead><tr><th>账号</th><th>UID</th><th>状态</th><th>到期</th><th>操作</th></tr></thead><tbody id="qoder-accounts"></tbody></table></div></article>
+      </section>
+
+      <section id="tab-codebuddy" class="tab-panel" hidden>
+        <div class="section-heading"><div><p class="eyebrow">WORKBUDDY / CODEBUDDY</p><h2>账号池、签到与客户端密钥</h2><p class="muted">所有账号管理操作通过统一工作台完成。</p></div><div class="button-row"><button id="codebuddy-pool-status" class="secondary">刷新全部状态</button><button id="codebuddy-pool-checkin" class="secondary">全部签到</button></div></div>
+        <div class="two-column">
+          <article class="work-card"><h3>账号授权</h3><form id="codebuddy-oauth-form" class="inline-form"><input id="codebuddy-account-name" placeholder="账号名称（可选）"><button class="primary" type="submit">生成授权链接</button></form><p id="codebuddy-oauth-result" class="muted result-line"></p><div id="codebuddy-oauth-flow" class="oauth-flow" hidden><a id="codebuddy-oauth-link" class="link" target="_blank" rel="noopener">打开腾讯授权页 ↗</a><button id="codebuddy-oauth-poll" class="secondary">查询授权结果</button><button id="codebuddy-oauth-cancel" class="ghost">取消</button></div></article>
+          <article class="work-card"><h3>账号池设置</h3><form id="codebuddy-settings-form" class="settings-form"><label>调度<select id="codebuddy-routing"><option value="round_robin">轮询</option><option value="manual">手动</option></select></label><label class="check-label"><input id="codebuddy-auto-checkin" type="checkbox"> 自动签到</label><label>签到时间<input id="codebuddy-checkin-time" type="time" value="09:00"></label><button class="secondary" type="submit">保存设置</button></form></article>
+        </div>
+        <article class="work-card"><div class="card-heading"><h3>WorkBuddy 账号池</h3><span id="codebuddy-account-count" class="pill neutral">0 个账号</span></div><div class="table-wrap"><table><thead><tr><th>账号</th><th>状态</th><th>额度</th><th>今日签到</th><th>操作</th></tr></thead><tbody id="codebuddy-accounts"></tbody></table></div></article>
+        <article class="work-card"><div class="card-heading"><h3>客户端 API Key</h3><button id="codebuddy-add-key" class="secondary">生成 Key</button></div><div class="table-wrap"><table><thead><tr><th>名称</th><th>提示</th><th>创建时间</th><th>操作</th></tr></thead><tbody id="codebuddy-keys"></tbody></table></div><p id="codebuddy-new-key" class="secret-result" hidden></p></article>
+      </section>
+
+      <section id="tab-checkin" class="tab-panel" hidden>
+        <div class="section-heading"><div><p class="eyebrow">CHECK-IN CENTER</p><h2>Trae、Qoder、WorkBuddy 统一签到</h2><p class="muted">账号配置保存在共享 checkin 配置文件。页面只展示脱敏信息。</p></div><button id="checkin-refresh" class="secondary">刷新配置</button></div>
+        <div class="checkin-grid">
+          <article class="work-card checkin-provider" data-checkin-provider="trae"><div class="card-heading"><h3>Trae</h3><button class="secondary checkin-run">立即签到</button></div><div class="checkin-list"></div><form class="checkin-form"><input name="name" placeholder="账号名称"><input name="token" type="password" placeholder="Cloud-IDE-JWT token" required><input name="region" value="cn" placeholder="region"><button class="primary" type="submit">添加 Trae 账号</button></form></article>
+          <article class="work-card checkin-provider" data-checkin-provider="qoder"><div class="card-heading"><h3>Qoder 签到</h3><button class="secondary checkin-run">立即签到</button></div><div class="checkin-list"></div><form class="checkin-form"><input name="name" placeholder="账号名称"><input name="token" type="password" placeholder="security_oauth_token" required><input name="version" value="0.3.4" placeholder="版本"><button class="primary" type="submit">添加 Qoder 账号</button></form></article>
+          <article class="work-card checkin-provider" data-checkin-provider="workbuddy"><div class="card-heading"><h3>WorkBuddy 签到</h3><button class="secondary checkin-run">立即签到</button></div><div class="checkin-list"></div><form class="checkin-form"><input name="name" placeholder="账号名称"><input name="access_token" type="password" placeholder="accessToken" required><input name="uid" placeholder="用户 UID" required><input name="domain" placeholder="domain（可选）"><button class="primary" type="submit">添加 WorkBuddy 账号</button></form></article>
+        </div>
+        <pre id="checkin-log" class="log-box">暂无签到日志</pre>
+      </section>
+
+      <footer><span>AI IDE GATEWAY</span><span>One page · four management modules · one API port</span></footer>
     </section>
   </main>
   <script src="/panel/assets/app.js" defer></script>
