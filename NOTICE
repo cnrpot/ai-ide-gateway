@@ -2,23 +2,34 @@ ai-ide-gateway
 ==============
 
 本项目把以下三个上游开源项目聚合到一个统一网关中，并新增了 router（统一入口）、
-checkin（统一签到）与 Docker 编排。上游项目以 git submodule 形式引入，其源码版权归各自
-作者所有，均为 MIT 许可。
+checkin（统一签到）与 Docker 编排。当前 `providers/` 中保存的是对应 GitHub 提交的源码
+快照（不是 git submodule）；源码版权归各自作者所有，均为 MIT 许可。
 
-上游项目（providers/ 下的 submodule）
+上游项目（providers/ 下的源码快照）
 -------------------------------------
 1. QoderGateway  —  https://github.com/bzym2/QoderGateway  (MIT)
    Qoder（阿里）的 OpenAI 兼容网关。作为 providers/qoder 引入。
+   固定提交：d00376cdb4e74cc0f1714d5a22e94815426c5731
 
 2. codebuddy2api  —  https://github.com/ShouZhuo0413/codebuddy2api  (MIT)
    腾讯 CodeBuddy / WorkBuddy 的 OpenAI/Anthropic 兼容转换器 + 账号池。
    作为 providers/codebuddy 引入。
+   固定提交：1366be7dab45797a744a45106eb9dce2cb20984c
 
-参考项目（未打包，仅作协议参考）
--------------------------------------
 3. workbuddy-manager  —  https://github.com/ithtelab/workbuddy-manager  (MIT)
-   腾讯 CodeBuddy 运维控制台。其 server/services/tencent.py 是完整的 CodeBuddy
-   协议参考（登录/刷新/签到/额度）。本仓库未包含其代码。
+   腾讯 CodeBuddy 运维控制台。其运行依赖外部 `Sliverkiss/workbuddy2api` Go 服务，
+   当前作为 providers/workbuddy-manager 快照保存，仅作协议、签到和管理 UI 参考。
+   固定提交：d8297b55b1512e56dc9037d87829d5b069b01a24
+
+未打包的运行依赖
+----------------
+workbuddy-manager 依赖 https://github.com/Sliverkiss/workbuddy2api (MIT) 的 Go 服务。
+本项目没有将该外部服务伪装成 codebuddy2api，也没有把它加入当前 Compose 编排。
+
+参考项目说明
+------------
+workbuddy-manager 的 server/services/tencent.py、账号管理和签到实现作为协议参考；
+实际 WorkBuddy 对话运行时使用 providers/codebuddy 中的 codebuddy2api。
 
 签到脚本来源
 -------------------------------------

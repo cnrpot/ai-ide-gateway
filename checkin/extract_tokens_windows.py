@@ -192,6 +192,7 @@ def extract_workbuddy() -> list[dict]:
 def main() -> None:
     out_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "config.json"
     config: dict = {"trae": [], "qoder": [], "workbuddy": []}
+    failures: list[str] = []
     for label, fn in (("qoder", extract_qoder), ("trae", extract_trae), ("workbuddy", extract_workbuddy)):
         try:
             items = fn()
@@ -203,7 +204,16 @@ def main() -> None:
                 print(f"[{label}] 未找到本地登录态（客户端未安装或未登录）")
         except Exception as exc:  # noqa: BLE001
             print(f"[{label}] 导出失败: {exc}")
-    out_path.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+            failures.append(label)
+    if failures:
+        print(f"\n导出失败（{', '.join(failures)}），为避免覆盖已有配置，本次不写入 {out_path}")
+        return
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = out_path.with_name(f".{out_path.name}.{os.getpid()}.tmp")
+    temp_path.write_text(
+        json.dumps(config, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    temp_path.replace(out_path)
     print(f"\n已写入 {out_path}（含明文 token，注意保密、勿外传、勿提交 git）")
 
 
@@ -212,5 +222,4 @@ if __name__ == "__main__":
         print("此脚本只能在 Windows 上运行（依赖 DPAPI 与本地客户端路径）")
         sys.exit(1)
     main()
-
 

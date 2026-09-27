@@ -1,7 +1,7 @@
 """Trae CN 签到（token 来自 config.json，容器可运行）。"""
 from __future__ import annotations
 
-from .common import accounts, client, log, mask
+from .common import accounts, client, log, mask, run_accounts
 
 API_BASE = "https://api.trae.cn/trae/api/v2/ug/checkin_credits"
 REQ_SOURCE = 1
@@ -56,11 +56,8 @@ def checkin_one(acct: dict, http) -> bool:
 
 def run() -> bool:
     accts = [a for a in accounts("trae") if a.get("token")]
-    if not accts:
-        log("[Trae] 配置中没有 trae 账号，跳过")
-        return True
     with client() as http:
-        return all(checkin_one(a, http) for a in accts)
+        return run_accounts("Trae", accts, http, checkin_one)
 
 
 if __name__ == "__main__":

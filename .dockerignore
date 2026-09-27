@@ -15,3 +15,4 @@ checkin/config.json
 docs/
 *.md
 !README.md
+!providers/qoder/README.md

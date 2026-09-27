@@ -17,11 +17,22 @@ services:
       QODER_BACKEND_KEY: ${QODER_BACKEND_KEY:-}
       CODEBUDDY_BACKEND_KEY: ${CODEBUDDY_BACKEND_KEY:-}
       DEFAULT_PROVIDER: ${DEFAULT_PROVIDER:-codebuddy}
+      ALLOW_ANONYMOUS: ${ALLOW_ANONYMOUS:-0}
       QODER_MODELS: ${QODER_MODELS:-lite}
       MODEL_ROUTES: ${MODEL_ROUTES:-}
+      REQUEST_TIMEOUT: ${REQUEST_TIMEOUT:-300}
+      CONNECT_TIMEOUT: ${CONNECT_TIMEOUT:-15}
+      HEALTH_TIMEOUT: ${HEALTH_TIMEOUT:-5}
     depends_on:
-      - qoder
-      - codebuddy
+      qoder:
+        condition: service_healthy
+      codebuddy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   # ---------- Qoder 后端（含管理控制台）----------
   qoder:
@@ -37,8 +48,15 @@ services:
       QODER_PORT: "5050"
       QODER_ADMIN_PASSWORD: ${QODER_ADMIN_PASSWORD:-admin}
       QODER_PAT: ${QODER_PAT:-}
+      QODER_BACKEND_KEY: ${QODER_BACKEND_KEY:?请在 .env 设置 QODER_BACKEND_KEY}
+      QODER_REQUIRE_AUTH: ${QODER_REQUIRE_AUTH:-1}
     volumes:
       - qoder-data:/data/.qoder
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5050/', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   # ---------- WorkBuddy/CodeBuddy 后端（codebuddy2api admin 控制台）----------
   codebuddy:
@@ -58,6 +76,11 @@ services:
     volumes:
       - codebuddy-auth:/data/auth
       - codebuddy-management:/data/management
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   # ---------- 统一签到（默认只跑 Trae；用 profile 显式启用）----------
   # 启动前先：cp checkin/config.example.json checkin/config.json 并填 token

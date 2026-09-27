@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from .common import accounts, client, log, mask
+from .common import accounts, client, log, mask, run_accounts
 
 API = "https://openapi.qoder.com.cn"
 CLIENT_TYPE = "10"
@@ -59,11 +59,8 @@ def checkin_one(acct: dict, http) -> bool:
 
 def run() -> bool:
     accts = [a for a in accounts("qoder") if a.get("token")]
-    if not accts:
-        log("[Qoder] 配置中没有 qoder 账号，跳过")
-        return True
     with client() as http:
-        return all(checkin_one(a, http) for a in accts)
+        return run_accounts("Qoder", accts, http, checkin_one)
 
 
 if __name__ == "__main__":

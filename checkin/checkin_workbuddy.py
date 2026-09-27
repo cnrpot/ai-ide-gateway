@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 
-from .common import accounts, client, log, mask
+from .common import accounts, client, log, mask, run_accounts
 
 API_BASE = "https://copilot.tencent.com/v2/billing/meter"
 
@@ -55,11 +55,8 @@ def checkin_one(acct: dict, http) -> bool:
 
 def run() -> bool:
     accts = [a for a in accounts("workbuddy") if a.get("access_token")]
-    if not accts:
-        log("[WorkBuddy] 配置中没有 workbuddy 账号，跳过")
-        return True
     with client() as http:
-        return all(checkin_one(a, http) for a in accts)
+        return run_accounts("WorkBuddy", accts, http, checkin_one)
 
 
 if __name__ == "__main__":

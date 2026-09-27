@@ -10,6 +10,23 @@ def _csv(name: str) -> list[str]:
     return [x.strip() for x in os.environ.get(name, "").split(",") if x.strip()]
 
 
+def _bool(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _float(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return max(0.1, float(raw))
+    except ValueError as exc:
+        raise ValueError(f"{name} 必须是数字: {raw!r}") from exc
+
+
 @dataclass
 class ProviderConfig:
     name: str
@@ -21,17 +38,28 @@ class ProviderConfig:
 class Settings:
     gateway_keys: list[str] = field(default_factory=lambda: _csv("GATEWAY_API_KEYS"))
     default_provider: str = os.environ.get("DEFAULT_PROVIDER", "codebuddy")
+    allow_anonymous: bool = field(default_factory=lambda: _bool("ALLOW_ANONYMOUS", False))
     qoder_models: list[str] = field(
         default_factory=lambda: _csv("QODER_MODELS") or ["lite"]
     )
+    request_timeout: float = field(default_factory=lambda: _float("REQUEST_TIMEOUT", 300.0))
+    connect_timeout: float = field(default_factory=lambda: _float("CONNECT_TIMEOUT", 15.0))
+    health_timeout: float = field(default_factory=lambda: _float("HEALTH_TIMEOUT", 5.0))
     model_routes: dict[str, str] = field(default_factory=dict)
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        if self.default_provider not in {"qoder", "codebuddy"}:
+            raise ValueError(
+                f"DEFAULT_PROVIDER 必须是 qoder 或 codebuddy: {self.default_provider!r}"
+            )
         raw = os.environ.get("MODEL_ROUTES", "").strip()
         if raw:
             try:
-                self.model_routes = {str(k): str(v) for k, v in json.loads(raw).items()}
+                parsed = json.loads(raw)
+                if not isinstance(parsed, dict):
+                    raise ValueError("MODEL_ROUTES 须为 JSON 对象")
+                self.model_routes = {str(k): str(v) for k, v in parsed.items()}
             except Exception as exc:  # noqa: BLE001
                 raise ValueError(f"MODEL_ROUTES 不是合法 JSON: {exc}") from exc
         self.providers = {
@@ -49,7 +77,8 @@ class Settings:
 
     @property
     def auth_enabled(self) -> bool:
-        return bool(self.gateway_keys)
+        # 安全默认是 fail-closed；只有显式 ALLOW_ANONYMOUS=1 才允许匿名。
+        return not self.allow_anonymous
 
 
 settings = Settings()

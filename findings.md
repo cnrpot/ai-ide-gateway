@@ -59,6 +59,15 @@
 6. 三个签到 `run()` 使用 `all(...)`，首个账号失败会短路，后续账号不会执行；应收集所有账号结果后返回总体状态。
 7. Qoder 后端的 API key 需要写入 SQLite `allowed_keys`，不能只在 compose 中设置 `QODER_BACKEND_KEY`。
 
+## 已实施的第一轮修正
+
+- `router` 默认 fail-closed；`GATEWAY_API_KEYS` 为空时 `/v1/*` 仍返回 401，只有显式 `ALLOW_ANONYMOUS=1` 才允许匿名。
+- 增加 `/v1/responses` 和 `/health/ready`；Responses/Messages 固定转发到 codebuddy，Chat 按模型前缀路由。
+- Qoder 镜像增加 `qoder-entrypoint.py`，每次启动把 `QODER_BACKEND_KEY` 幂等写入 `allowed_keys`，并由 `QODER_REQUIRE_AUTH` 控制是否强制后端鉴权。
+- Compose 增加 provider 健康检查和 router 的健康依赖；Docker engine 未运行，尚未完成实际镜像构建。
+- 签到账号执行统一收集每个账号结果；Windows 导出在任一 provider 解密失败时不覆盖旧配置，成功时原子替换。
+- mock 测试已覆盖鉴权、模型列表、provider key 隔离、三种协议和 SSE 透传。
+
 ## 设计取舍
 
 - 采用“统一 router + 两个独立后端 + 可选签到容器”，比把两个成熟后端重写成一个应用更容易升级和回滚。

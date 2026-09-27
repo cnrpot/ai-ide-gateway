@@ -23,8 +23,9 @@ RUN pip install --no-cache-dir \
 
 # 带 static 产物的完整源码树（stage1 已删 node_modules）
 COPY --from=frontend /src /app
+COPY docker/qoder-entrypoint.py /usr/local/bin/qoder-entrypoint.py
 RUN pip install --no-cache-dir --no-deps . && mkdir -p /data/.qoder
 
 VOLUME ["/data/.qoder"]
 EXPOSE 5050
-CMD ["uvicorn", "qoder2api.app:app", "--host", "0.0.0.0", "--port", "5050"]
+CMD ["python3", "/usr/local/bin/qoder-entrypoint.py"]

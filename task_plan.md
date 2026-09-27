@@ -42,29 +42,29 @@
 - [x] 发现旧草稿与实际状态不一致：README 声称 submodule，但当前是源码快照；router 尚未提供 `/v1/responses`；Qoder 不会自动把 `QODER_BACKEND_KEY` 当作 SQLite `allowed_keys`。
 - [x] 将事实、取舍、风险和外部来源写入 `findings.md`。
 
-### 阶段 2：上游运行时和 Docker 镜像 — `pending`
+### 阶段 2：上游运行时和 Docker 镜像 — `in_progress`
 
 - [ ] 设计并验证 QoderGateway 的 Linux 镜像：构建前端，跳过仅 Windows 的 `pypiwin32`/`drissionpage` 强依赖，持久化 `/data/.qoder`。
-- [ ] 为 Qoder 增加可重复的 API 鉴权初始化或明确的首次启动配置，使 router 使用的后端 key 真正进入 `allowed_keys`。
+- [x] 为 Qoder 增加可重复的 API 鉴权初始化：容器入口把 `QODER_BACKEND_KEY` 写入 SQLite `allowed_keys`，默认启用鉴权。
 - [ ] 验证 codebuddy2api 独立 admin 镜像、`ADMIN_KEY` 长度约束、auth/management 卷和 `/health` 探活。
-- [ ] 为 router、Qoder、codebuddy、checkin 统一编排网络、卷、重启策略、健康检查和内网端口暴露。
+- [x] 为 router、Qoder、codebuddy、checkin 补充 Compose 健康检查、依赖顺序、卷、重启策略和内网端口暴露。
 - [ ] 明确控制台端口、数据卷和日志的备份/迁移方式。
 
-### 阶段 3：统一 router — `pending`
+### 阶段 3：统一 router — `in_progress`
 
-- [ ] 保留并重构统一 API-key 校验；缺少 key 时按安全默认失败，不能静默裸奔。
+- [x] 保留并重构统一 API-key 校验；缺少 key 时按安全默认失败，只有 `ALLOW_ANONYMOUS=1` 才允许匿名。
 - [ ] 实现模型路由：显式 `qoder/<model>`、`codebuddy/<model>` 优先，其次 `MODEL_ROUTES`，再按模型前缀和默认 provider 兜底。
-- [ ] 支持并测试 `/v1/chat/completions`、`/v1/responses`、`/v1/messages`、`/v1/models`；Anthropic/Responses 请求只转发到支持它们的 codebuddy 后端。
-- [ ] 处理非流式状态码、上游错误体、超时和流式 SSE；上游失败时返回可诊断且不泄漏 token 的错误。
-- [ ] 对外响应保留必要的 content-type、request id/诊断信息，避免把内部服务地址暴露给客户端。
+- [x] 支持并完成 mock 协议验证：`/v1/chat/completions`、`/v1/responses`、`/v1/messages`、`/v1/models`；Anthropic/Responses 固定走 codebuddy。
+- [x] 处理非流式状态码、上游错误体、超时和流式 SSE；错误信息不包含后端密钥。
+- [x] 对外响应只保留必要的 content-type、cache-control、retry-after 和 request id，避免暴露内部服务地址。
 - [ ] 为路由、鉴权、流式转发和错误映射补充小而有意义的单元测试。
 
-### 阶段 4：签到与凭证安全 — `pending`
+### 阶段 4：签到与凭证安全 — `in_progress`
 
 - [ ] 保留 Trae 独立签到，完善状态查询、领取、响应校验、超时和多账号继续执行逻辑。
 - [ ] Qoder/WorkBuddy 的独立签到默认关闭，避免与两个后端内置签到重复；保留显式开关供只跑签到场景使用。
-- [ ] 修复多账号 `all(...)` 的首个失败短路，输出每个账号结果和总体失败状态。
-- [ ] 防止 token 导出失败覆盖现有配置；写入采用临时文件 + 原子替换，并限制日志脱敏。
+- [x] 修复多账号 `all(...)` 的首个失败短路，输出每个账号结果和总体失败状态。
+- [x] 防止 token 导出失败覆盖现有配置；成功写入采用临时文件 + 原子替换，并限制日志脱敏。
 - [ ] 检查 `extract_tokens_windows.py` 的 Windows 依赖、明文配置提醒和只读行为，明确 token 过期后的人工刷新步骤。
 - [ ] 为调度器增加时区、重复触发、退出码和日志轮转/卷持久化说明。
 
