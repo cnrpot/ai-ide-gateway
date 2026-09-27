@@ -10,6 +10,8 @@ docker compose up -d --build
 docker compose ps
 ```
 
+默认只发布 `8080` 一个宿主机端口。统一面板地址是 `http://localhost:8080/`；面板里的 Qoder 和 CodeBuddy 链接分别使用 `http://localhost:8080/qoder/` 与 `http://localhost:8080/codebuddy/admin/`，由 router 反向代理到内部服务。
+
 升级源码后重新构建并滚动重启：
 
 ```bash
@@ -71,7 +73,17 @@ curl http://localhost:8080/health
 curl http://localhost:8080/health/ready
 ```
 
-`/health` 只表示 router 进程存活；`/health/ready` 会探测两个后端。若后端健康但对话返回“无可用账号”，请分别打开 `http://127.0.0.1:5050` 和 `http://127.0.0.1:8787` 导入或授权账号。真实对话请求不能在没有上游账号时完成。
+`/health` 只表示 router 进程存活；`/health/ready` 会探测两个后端。若后端健康但对话返回“无可用账号”，请从统一面板打开对应控制台导入或授权账号。真实对话请求不能在没有上游账号时完成。
+
+## 面板与主机名路由
+
+面板需要 `PANEL_ADMIN_KEY`。它只保护面板状态 API；Qoder 和 CodeBuddy 原生控制台仍使用各自的管理密码/管理密钥。路径入口可直接用于本机和单域名部署；生产环境也可以让 HTTPS 反向代理转发以下三个主机名到同一个 router：
+
+- `panel.<域名>` 或根域名：统一面板；
+- `qoder.<域名>`：Qoder 原生控制台；
+- `codebuddy.<域名>`：CodeBuddy 原生控制台。
+
+将 `PANEL_BASE_DOMAIN` 设置成对应基础域名，并把 `PANEL_COOKIE_SECURE=1`。本机使用 `localhost` 时无需改 hosts 文件。
 
 启用 Trae 签到：在 Windows 上运行 `checkin/extract_tokens_windows.py` 生成 `checkin/config.json`，然后执行：
 

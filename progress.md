@@ -16,6 +16,9 @@
 - Compose 增加四类服务的健康检查、Qoder/CodeBuddy 健康依赖和超时配置；README/NOTICE 改为描述源码快照而非 submodule。
 - 签到脚本改为遍历全部账号并汇总结果；Windows token 导出改为失败不覆盖、成功原子替换。
 - 新增 `router/tests/test_router.py` 和 `checkin/tests/test_common.py`，验证鉴权、模型路由、Responses/Messages、SSE 透传和多账号失败不短路。
+- 新增统一管理面板和会话登录，聚合 router、Qoder、WorkBuddy/CodeBuddy 与 Trae 签到 profile 的状态。
+- 将 Qoder、CodeBuddy 控制台收敛到 router 的单一宿主机端口 `8080`，增加 `/qoder/`、`/codebuddy/` 路径代理，并保留主机名路由兼容域名部署。
+- 为路径代理增加 HTML/JavaScript、重定向和 CodeBuddy Cookie 路径改写；本机 HTTP 下自动移除后端 `Secure` Cookie 属性。
 
 ### 当前状态
 
@@ -24,8 +27,9 @@
 - 阶段 2（上游运行时和 Docker 镜像）：完成；四个镜像均已构建，Qoder bootstrap、三项服务健康检查、签到容器启动和备份/迁移说明已完成。
 - 阶段 3（统一 router）：完成；核心路由、mock 协议和真实容器健康/模型聚合验证已完成，真实对话需在部署机导入上游账号后验证。
 - 阶段 4（签到与凭证安全）：完成；多账号执行、原子导出、Trae 调度容器启动和脱敏 mock HTTP 回归已完成。
+- 阶段 7（统一管理面板与单端口聚合）：完成；面板登录、状态探测、路径代理、Cookie 会话和 Docker 端到端验证已完成。
 - Docker engine 已恢复；router、Qoder、codebuddy、checkin 镜像均完成构建，前三个服务已完成端到端启动和健康检查。
-- 尚未写入真实账号、token、`.env` 或签到配置。
+- 本轮 Docker 验证使用临时 `.env`，未写入 Git；真实账号、token 和签到配置仍需在部署机导入。
 
 ### 下一步
 
@@ -34,12 +38,17 @@
 ### 验证记录
 
 - `python -m compileall -q router checkin docker/qoder-entrypoint.py`：通过。
-- `python -m unittest discover -s router/tests -p 'test_*.py' -v`：3 项通过。
-- `python -m unittest discover -s checkin/tests -p 'test_*.py' -v`：1 项通过。
+- `python -m unittest discover -s router/tests -p 'test_*.py' -v`：7 项通过。
+- `python -m unittest discover -s checkin/tests -p 'test_*.py' -v`：2 项通过。
 - `docker compose config --quiet`（注入临时测试环境变量）：通过。
 - Docker Engine 29.6.1：已恢复。
 - 四个镜像构建：通过（`router`、`qoder`、`codebuddy`、`checkin`）。
 - `docker compose up -d`：通过；`qoder`、`codebuddy`、`router` 均 healthy。
+- `docker compose ps`：仅 router 发布 `0.0.0.0:8080->8080/tcp`；Qoder `5050` 和 CodeBuddy `8787` 仅保留容器内端口。
+- `/panel/api/config`：返回 `/qoder/` 和 `/codebuddy/admin/` 单端口路径入口。
+- `GET /qoder/`、`GET /codebuddy/admin/`：通过；HTML、JavaScript 静态路径均完成前缀改写。
+- CodeBuddy 路径登录：Cookie 改写为 `Path=/codebuddy/admin`，本机 HTTP 移除 `Secure`，随后 `/admin/api/overview` 返回 200。
+- 宿主机直接访问 `5050`、`8787`：均失败，确认后端端口未发布。
 - `GET /health`、`GET /health/ready`：通过；两个 provider 均报告可达。
 - 无网关 key 的 `/v1/models`：401；带网关 key 的 `/v1/models`：返回 `qoder/` 和 `codebuddy/` 聚合模型。
 - Qoder 容器 SQLite bootstrap：`auth_required=True`，测试后端 key 已写入 `allowed_keys`。

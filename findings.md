@@ -73,8 +73,16 @@
 
 - 采用“统一 router + 两个独立后端 + 可选签到容器”，比把两个成熟后端重写成一个应用更容易升级和回滚。
 - 采用源码快照而非当前不可用的 submodule，先保证离线可构建；通过 `NOTICE`、来源清单和固定 SHA 保留可追溯性。
-- 管理端口只绑定 `127.0.0.1`；对外访问由用户自行配置 HTTPS 反代，避免在 compose 中默认暴露账号管理界面。
+- Qoder 和 CodeBuddy 不再发布宿主机管理端口；控制台通过 router 的单端口路径或主机名路由访问，对外部署仍建议配置 HTTPS 反代。
 - Trae token 从 Windows 导出脚本进入容器，是能力边界而不是自动刷新机制；临期后需要用户打开客户端重新导出。
+
+## 统一面板与路径聚合复核
+
+- 面板入口为 `/panel/`，由 `PANEL_ADMIN_KEY` 保护，登录会话使用 HMAC 签名 Cookie，状态接口并行探测 Qoder 和 CodeBuddy。
+- 面板默认返回 `http://<当前主机>:8080/qoder/` 与 `http://<当前主机>:8080/codebuddy/admin/`，不依赖 Windows 对 `*.localhost` 的解析；`qoder.<域名>` 和 `codebuddy.<域名>` 主机名路由仍保留。
+- 路径代理把 `/qoder`、`/codebuddy` 前缀去掉后请求内部服务，再对 HTML、JavaScript、CSS、Location 和 CodeBuddy `Set-Cookie: Path=/admin` 做反向改写。
+- 本机 `PANEL_COOKIE_SECURE=0` 且请求主机为 `localhost` 时，代理移除后端 `Secure` Cookie 属性，确保管理会话能在 HTTP 下继续发送；生产 HTTPS 应设置 `PANEL_COOKIE_SECURE=1`。
+- Docker 端到端验证确认只发布 `8080`，直接访问宿主机 `5050`/`8787` 失败；路径页面、静态资源、CodeBuddy 登录和管理 API 均通过同一入口工作。
 
 ## 待验证问题
 

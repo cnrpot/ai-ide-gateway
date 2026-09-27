@@ -45,6 +45,23 @@ class Settings:
     request_timeout: float = field(default_factory=lambda: _float("REQUEST_TIMEOUT", 300.0))
     connect_timeout: float = field(default_factory=lambda: _float("CONNECT_TIMEOUT", 15.0))
     health_timeout: float = field(default_factory=lambda: _float("HEALTH_TIMEOUT", 5.0))
+    panel_admin_key: str = field(default_factory=lambda: os.environ.get("PANEL_ADMIN_KEY", "").strip())
+    panel_cookie_secure: bool = field(default_factory=lambda: _bool("PANEL_COOKIE_SECURE", False))
+    panel_base_domain: str = field(
+        default_factory=lambda: os.environ.get("PANEL_BASE_DOMAIN", "localhost").strip() or "localhost"
+    )
+    panel_qoder_host: str = field(
+        default_factory=lambda: os.environ.get(
+            "PANEL_QODER_HOST",
+            f"qoder.{os.environ.get('PANEL_BASE_DOMAIN', 'localhost').strip() or 'localhost'}",
+        ).strip()
+    )
+    panel_codebuddy_host: str = field(
+        default_factory=lambda: os.environ.get(
+            "PANEL_CODEBUDDY_HOST",
+            f"codebuddy.{os.environ.get('PANEL_BASE_DOMAIN', 'localhost').strip() or 'localhost'}",
+        ).strip()
+    )
     model_routes: dict[str, str] = field(default_factory=dict)
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
 

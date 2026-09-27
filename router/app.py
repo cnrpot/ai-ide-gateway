@@ -7,22 +7,33 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hmac
 import json
 import logging
+import re
 from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 
 from .auth import check as check_key
 from .config import ProviderConfig, settings
+from .panel import (
+    PANEL_DIR,
+    clear_session_cookie,
+    panel_enabled,
+    set_session_cookie,
+    valid_session,
+)
 from .routing import resolve
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [router] %(message)s")
 log = logging.getLogger("router")
 
 app = FastAPI(title="ai-ide-gateway router", version="1.1.0")
+app.mount("/panel/assets", StaticFiles(directory=str(PANEL_DIR / "assets")), name="panel-assets")
 
 
 @app.on_event("startup")
@@ -52,6 +63,132 @@ def _client() -> httpx.AsyncClient:
         )
         app.state.client = client
     return client
+
+
+def _backend_for_host(hostname: str | None) -> ProviderConfig | None:
+    host = (hostname or "").split(":", 1)[0].lower().rstrip(".")
+    if host == settings.panel_qoder_host.lower().rstrip("."):
+        return settings.providers["qoder"]
+    if host == settings.panel_codebuddy_host.lower().rstrip("."):
+        return settings.providers["codebuddy"]
+    return None
+
+
+def _backend_for_path(path: str) -> tuple[ProviderConfig, str, str] | None:
+    for prefix, name in (("/qoder", "qoder"), ("/codebuddy", "codebuddy")):
+        if path == prefix or path.startswith(prefix + "/"):
+            remainder = path[len(prefix) :] or "/"
+            return settings.providers[name], remainder, prefix
+    return None
+
+
+def _rewrite_console_body(content: bytes, provider: ProviderConfig, prefix: str, content_type: str) -> bytes:
+    if not any(kind in content_type.lower() for kind in ("text/html", "javascript", "text/css")):
+        return content
+    try:
+        text = content.decode("utf-8")
+    except UnicodeDecodeError:
+        return content
+    roots = ("assets", "console", "documents", "ui", "v1") if provider.name == "qoder" else ("admin", "v1")
+    for root in roots:
+        pattern = re.compile(r"([\"'`])/(" + re.escape(root) + r")(?=[/\"'`?])")
+        text = pattern.sub(rf"\1{prefix}/\2", text)
+        text = re.sub(r"(?<![A-Za-z0-9_])/(" + re.escape(root) + r")(?=/)", rf"{prefix}/\1", text)
+    if provider.name == "qoder":
+        text = text.replace('href="/"', f'href="{prefix}/"').replace("href='/'", f"href='{prefix}/'")
+    return text.encode("utf-8")
+
+
+def _rewrite_console_header(value: str, provider: ProviderConfig, prefix: str, name: str) -> str:
+    if name.lower() == "location" and value.startswith("/") and not value.startswith(prefix + "/"):
+        roots = ("assets", "console", "documents", "ui", "v1") if provider.name == "qoder" else ("admin", "v1")
+        if any(value == f"/{root}" or value.startswith(f"/{root}/") for root in roots):
+            return prefix + value
+    if name.lower() == "set-cookie" and provider.name == "codebuddy":
+        return re.sub(r"(;\s*path=)/admin(?=;|$)", rf"\1{prefix}/admin", value, flags=re.IGNORECASE)
+    return value
+
+
+async def _proxy_host_request(
+    request: Request,
+    provider: ProviderConfig,
+    *,
+    upstream_path: str | None = None,
+    public_prefix: str = "",
+) -> Response:
+    """在同一个网关端口上承载两个后端原生控制台。
+
+    控制台使用根路径和绝对资源 URL，因此采用主机名路由，而不是把它们
+    塞进 `/qoder`、`/codebuddy` 子路径。浏览器仍然看到原始后端路径，
+    登录 cookie、静态资源和前端 API 不需要重写。
+    """
+    path = upstream_path or request.url.path or "/"
+    url = f"{provider.base_url}{path}"
+    if request.url.query:
+        url += f"?{request.url.query}"
+    skip = {"host", "content-length", "connection", "transfer-encoding"}
+    headers = {key: value for key, value in request.headers.items() if key.lower() not in skip}
+    headers["x-forwarded-host"] = request.headers.get("host", "")
+    headers["x-forwarded-proto"] = request.url.scheme
+    try:
+        upstream = await _client().request(
+            request.method,
+            url,
+            headers=headers,
+            content=await request.body(),
+            follow_redirects=False,
+        )
+    except httpx.TimeoutException:
+        return JSONResponse({"detail": f"后端 {provider.name} 请求超时"}, status_code=504)
+    except httpx.HTTPError as exc:
+        log.warning("面板代理 %s 请求失败: %s", provider.name, type(exc).__name__)
+        return JSONResponse({"detail": f"后端 {provider.name} 暂时不可用"}, status_code=502)
+
+    content_type = upstream.headers.get("content-type", "")
+    body = _rewrite_console_body(upstream.content, provider, public_prefix, content_type) if public_prefix else upstream.content
+    response = Response(content=body, status_code=upstream.status_code, media_type=None)
+    allowed = {
+        "cache-control",
+        "content-disposition",
+        "content-type",
+        "etag",
+        "last-modified",
+        "location",
+        "retry-after",
+        "set-cookie",
+    }
+    for key, value in upstream.headers.multi_items():
+        if key.lower() in allowed:
+            hostname = (request.url.hostname or "").lower().rstrip(".")
+            if (
+                key.lower() == "set-cookie"
+                and not settings.panel_cookie_secure
+                and (hostname == "localhost" or hostname.endswith(".localhost"))
+            ):
+                # 本机 HTTP 聚合入口没有 TLS；去掉后端 Secure cookie 属性，
+                # 否则 CodeBuddy 管理会话在 localhost 上无法继续使用。
+                value = re.sub(r";\s*secure(?=;|$)", "", value, flags=re.IGNORECASE)
+            if public_prefix:
+                value = _rewrite_console_header(value, provider, public_prefix, key)
+            response.headers.append(key, value)
+    return response
+
+
+@app.middleware("http")
+async def _backend_console_hosts(request: Request, call_next):
+    path_target = _backend_for_path(request.url.path)
+    if path_target is not None:
+        provider, upstream_path, public_prefix = path_target
+        return await _proxy_host_request(
+            request,
+            provider,
+            upstream_path=upstream_path,
+            public_prefix=public_prefix,
+        )
+    provider = _backend_for_host(request.url.hostname)
+    if provider is not None:
+        return await _proxy_host_request(request, provider)
+    return await call_next(request)
 
 
 def _error(message: str, status_code: int, error_type: str = "invalid_request_error") -> JSONResponse:
@@ -108,6 +245,87 @@ async def health() -> dict[str, Any]:
         "auth_required": settings.auth_enabled,
         "providers": sorted(settings.providers),
     }
+
+
+def _panel_console_urls(request: Request) -> dict[str, str]:
+    host = request.headers.get("host", "localhost:8080")
+    scheme = request.url.scheme
+    return {
+        "qoder": f"{scheme}://{host}/qoder/",
+        "codebuddy": f"{scheme}://{host}/codebuddy/admin/",
+    }
+
+
+@app.get("/")
+async def panel_root() -> RedirectResponse:
+    return RedirectResponse("/panel/", status_code=307)
+
+
+@app.get("/panel")
+async def panel_redirect() -> RedirectResponse:
+    return RedirectResponse("/panel/", status_code=307)
+
+
+@app.get("/panel/", response_class=FileResponse)
+async def panel_index() -> FileResponse:
+    return FileResponse(PANEL_DIR / "index.html")
+
+
+@app.get("/panel/api/config")
+async def panel_config(request: Request) -> dict[str, Any]:
+    return {
+        "enabled": panel_enabled(),
+        "consoles": _panel_console_urls(request),
+        "api_base": f"{request.url.scheme}://{request.headers.get('host', 'localhost:8080')}",
+    }
+
+
+@app.post("/panel/api/login")
+async def panel_login(request: Request) -> Response:
+    if not panel_enabled():
+        return JSONResponse({"detail": "未配置 PANEL_ADMIN_KEY"}, status_code=503)
+    try:
+        payload = await request.json()
+    except ValueError:
+        payload = {}
+    supplied = str(payload.get("key") or "").strip()
+    if not supplied or not hmac.compare_digest(supplied, settings.panel_admin_key):
+        return JSONResponse({"detail": "管理面板密钥错误"}, status_code=401)
+    response = JSONResponse({"status": "ok"})
+    set_session_cookie(response)
+    return response
+
+
+@app.get("/panel/api/session")
+async def panel_session(request: Request) -> JSONResponse:
+    return JSONResponse({"authenticated": valid_session(request)})
+
+
+@app.post("/panel/api/logout")
+async def panel_logout() -> Response:
+    response = JSONResponse({"status": "ok"})
+    clear_session_cookie(response)
+    return response
+
+
+@app.get("/panel/api/status")
+async def panel_status(request: Request) -> JSONResponse:
+    if not panel_enabled():
+        return JSONResponse({"detail": "未配置 PANEL_ADMIN_KEY"}, status_code=503)
+    if not valid_session(request):
+        return JSONResponse({"detail": "需要登录管理面板"}, status_code=401)
+    pairs = await asyncio.gather(
+        *(_provider_probe(name, provider) for name, provider in settings.providers.items())
+    )
+    providers = dict(pairs)
+    return JSONResponse(
+        {
+            "status": "ok" if all(item.get("ok") for item in providers.values()) else "degraded",
+            "providers": providers,
+            "consoles": _panel_console_urls(request),
+            "checkin": {"status": "profile-managed", "profile": "checkin"},
+        }
+    )
 
 
 @app.get("/health/ready")

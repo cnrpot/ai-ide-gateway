@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>AI IDE Gateway · 统一管理面板</title>
+  <link rel="stylesheet" href="/panel/assets/style.css">
+</head>
+<body>
+  <div class="glow glow-a"></div><div class="glow glow-b"></div>
+  <main class="shell">
+    <section id="login" class="login-card">
+      <div class="brand-mark">AI<span>·</span>IDE</div>
+      <p class="eyebrow">UNIFIED CONTROL PLANE</p>
+      <h1>一个入口，管理所有模型连接。</h1>
+      <p class="muted">Qoder、WorkBuddy / CodeBuddy 和 Trae 签到运行在同一个网关端口。</p>
+      <form id="login-form">
+        <label for="panel-key">面板管理密钥</label>
+        <input id="panel-key" type="password" autocomplete="current-password" placeholder="输入 PANEL_ADMIN_KEY" required>
+        <button class="primary" type="submit">进入管理面板 <span>↗</span></button>
+        <p id="login-error" class="error" role="alert"></p>
+      </form>
+      <p class="hint">面板密钥只用于管理入口，不会转发给 Qoder 或 CodeBuddy。</p>
+    </section>
+
+    <section id="workspace" hidden>
+      <header class="topbar">
+        <div><p class="eyebrow">AI IDE GATEWAY</p><h1>统一管理面板<span>.</span></h1></div>
+        <div class="top-actions"><span id="last-updated" class="muted">等待状态</span><button id="refresh" class="ghost">刷新</button><button id="logout" class="ghost">退出</button></div>
+      </header>
+
+      <section class="hero">
+        <div><span class="status-dot online"></span><strong id="overall-status">正在检查服务</strong><p id="overall-detail" class="muted">面板会探测两个后端的健康状态。</p></div>
+        <div class="api-chip"><span>统一 API</span><code id="api-base">—</code><button id="copy-api" title="复制 API 地址">复制</button></div>
+      </section>
+
+      <section class="grid">
+        <article class="service-card gateway-card">
+          <div class="card-top"><div class="service-icon">◎</div><span class="pill online">GATEWAY</span></div>
+          <h2>统一 Router</h2><p class="muted">OpenAI Chat、Responses、Anthropic Messages 与模型聚合。</p>
+          <div class="service-meta"><span>对外入口</span><code id="gateway-url">—</code></div>
+          <div class="card-actions"><a class="primary small" href="/docs/operations.md" target="_blank">运维文档 ↗</a></div>
+        </article>
+        <article class="service-card" data-provider="qoder">
+          <div class="card-top"><div class="service-icon qoder">Q</div><span id="qoder-status" class="pill pending">检查中</span></div>
+          <h2>Qoder</h2><p class="muted">账号池、PAT 导入、配额和 Qoder 控制台。</p>
+          <div class="service-meta"><span>状态</span><strong id="qoder-detail">—</strong></div>
+          <div class="card-actions"><a id="qoder-link" class="primary small" href="#" target="_blank" rel="noopener">打开 Qoder 控制台 ↗</a></div>
+        </article>
+        <article class="service-card" data-provider="codebuddy">
+          <div class="card-top"><div class="service-icon buddy">W</div><span id="codebuddy-status" class="pill pending">检查中</span></div>
+          <h2>WorkBuddy / CodeBuddy</h2><p class="muted">账号授权、API Key、模型测试和每日签到。</p>
+          <div class="service-meta"><span>状态</span><strong id="codebuddy-detail">—</strong></div>
+          <div class="card-actions"><a id="codebuddy-link" class="primary small" href="#" target="_blank" rel="noopener">打开 WorkBuddy 控制台 ↗</a></div>
+        </article>
+        <article class="service-card checkin-card">
+          <div class="card-top"><div class="service-icon checkin">◷</div><span class="pill neutral">PROFILE</span></div>
+          <h2>Trae 签到</h2><p class="muted">独立签到服务没有 HTTP 端口，由 Compose profile 管理。</p>
+          <div class="service-meta"><span>启动方式</span><code>--profile checkin</code></div>
+          <div class="card-actions"><a class="secondary small" href="https://github.com/cnrpot/ai-ide-gateway#签到" target="_blank" rel="noopener">查看签到说明 ↗</a></div>
+        </article>
+      </section>
+
+      <section class="howto">
+        <div><p class="eyebrow">SINGLE PORT ACCESS</p><h2>所有控制台共享一个端口。</h2><p class="muted">本机访问时，网关根据主机名转发到对应后端，Qoder 和 CodeBuddy 的原生资源路径与登录流程保持不变。</p></div>
+        <div class="host-list"><code>http://localhost:8080</code><code>http://localhost:8080/qoder/</code><code>http://localhost:8080/codebuddy/admin/</code></div>
+      </section>
+      <footer><span>AI IDE GATEWAY</span><span>Private deployment · one port · three providers</span></footer>
+    </section>
+  </main>
+  <script src="/panel/assets/app.js" defer></script>
+</body>
+</html>

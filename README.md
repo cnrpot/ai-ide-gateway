@@ -10,6 +10,10 @@
 ## 架构
 
 ```
+   管理面板 :8080 ──┬─ localhost:8080                  ─► router / panel
+                   ├─ localhost:8080/qoder/           ─► qoder 控制台 :5050
+                   └─ localhost:8080/codebuddy/admin/ ─► codebuddy 控制台 :8787
+
    OpenAI 客户端 ──Bearer <网关key>──► router :8080  ──┬─ model=qoder/*     ─► qoder     :5050 ─► api2-v2.qoder.sh
    /v1/chat/completions /v1/responses /v1/messages  └─ model=codebuddy/* ─► codebuddy :8787 ─► copilot.tencent.com
 
@@ -32,7 +36,7 @@ cd ai-ide-gateway
 
 # 2. 配置
 cp .env.example .env
-#   至少设置：GATEWAY_API_KEYS、QODER_BACKEND_KEY、CODEBUDDY_ADMIN_KEY、CODEBUDDY_BACKEND_KEY
+#   至少设置：GATEWAY_API_KEYS、PANEL_ADMIN_KEY、QODER_BACKEND_KEY、CODEBUDDY_ADMIN_KEY、CODEBUDDY_BACKEND_KEY
 
 # 3. 启动（router + qoder + codebuddy）
 docker compose up -d --build
@@ -41,14 +45,23 @@ docker compose up -d --build
 curl http://localhost:8080/health
 ```
 
+## 统一管理面板
+
+启动后访问 `http://localhost:8080/`，输入 `PANEL_ADMIN_KEY`。面板会显示网关、Qoder、CodeBuddy 和签到 profile 的状态，并提供两个原生控制台入口：
+
+- `http://localhost:8080/qoder/`：Qoder 控制台；
+- `http://localhost:8080/codebuddy/admin/`：WorkBuddy / CodeBuddy 控制台。
+
+两个后端不再发布宿主机端口，全部通过 router 的 8080 端口转发。路径入口适合本机和单域名部署；同时仍支持 `qoder.<域名>`、`codebuddy.<域名>` 主机名路由。生产 HTTPS 反代后设置 `PANEL_COOKIE_SECURE=1`。
+
 ## 账号纳管
 
 Docker 里读不到你 Windows 本地客户端的加密登录态，所以账号通过各自控制台在线纳管：
 
-- **Qoder**：浏览器打开 `http://127.0.0.1:5050` → 用 `QODER_ADMIN_PASSWORD` 登录 →
+- **Qoder**：从统一面板打开 Qoder 控制台 → 用 `QODER_ADMIN_PASSWORD` 登录 →
   用 PAT 导入账号（或在 `.env` 里预填 `QODER_PAT` 首次自动导入）。Qoder 的签到由它自动完成。
   容器启动时会把 `QODER_BACKEND_KEY` 写入 Qoder 的 SQLite `allowed_keys`，router 才能安全转发。
-- **WorkBuddy/CodeBuddy**：浏览器打开 `http://127.0.0.1:8787` → 用 `CODEBUDDY_ADMIN_KEY` 登录 →
+- **WorkBuddy/CodeBuddy**：从统一面板打开 WorkBuddy 控制台 → 用 `CODEBUDDY_ADMIN_KEY` 登录 →
   扫码授权 CN 账号。它自带账号池轮询 + 每日签到（默认 09:00）。
 
 ## 模型命名与路由
@@ -102,7 +115,7 @@ docker compose logs -f checkin
 ## 安全提示
 
 - `router` 是唯一对外端口。默认要求 `GATEWAY_API_KEYS`；即使为空也会拒绝 `/v1` 请求，只有显式设置 `ALLOW_ANONYMOUS=1` 才允许匿名。
-- 两个控制台默认只绑定 `127.0.0.1`，仅本机可访问；对外请加 HTTPS 反向代理。
+- 两个控制台不再单独发布宿主机端口，只能经 router 的主机名路由访问；对外请加 HTTPS 反向代理并配置 `PANEL_COOKIE_SECURE=1`。
 - `checkin/config.json` 含明文 token，已在 `.gitignore` 中，切勿提交或外传。
 
 ## 目录结构

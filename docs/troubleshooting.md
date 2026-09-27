@@ -25,7 +25,7 @@
   （compose 已用同一个 `.env` 值绑定）。
 
 - **qoder 返回空 / TOKEN_INVALID**
-  账号未导入或 token 过期。到 `127.0.0.1:5050` 控制台重新导入 PAT。
+  账号未导入或 token 过期。从统一面板打开 `http://localhost:8080/qoder/` 重新导入 PAT。
 
 - **模型分发错**
   用显式前缀 `qoder/xxx` 或 `codebuddy/xxx` 最稳；或在 `.env` 的 `MODEL_ROUTES` 里补裸名映射。

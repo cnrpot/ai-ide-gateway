@@ -9,7 +9,7 @@ services:
     image: ai-ide-gateway/router
     restart: unless-stopped
     ports:
-      - "8080:8080"          # 对外唯一入口；务必在 .env 里配好 GATEWAY_API_KEYS
+      - "8080:8080"          # 面板、统一 API 和两个后端控制台共用的唯一入口
     environment:
       GATEWAY_API_KEYS: ${GATEWAY_API_KEYS:-}
       QODER_BASE_URL: http://qoder:5050
@@ -23,6 +23,9 @@ services:
       REQUEST_TIMEOUT: ${REQUEST_TIMEOUT:-300}
       CONNECT_TIMEOUT: ${CONNECT_TIMEOUT:-15}
       HEALTH_TIMEOUT: ${HEALTH_TIMEOUT:-5}
+      PANEL_ADMIN_KEY: ${PANEL_ADMIN_KEY:?请在 .env 设置 PANEL_ADMIN_KEY}
+      PANEL_COOKIE_SECURE: ${PANEL_COOKIE_SECURE:-0}
+      PANEL_BASE_DOMAIN: ${PANEL_BASE_DOMAIN:-localhost}
     depends_on:
       qoder:
         condition: service_healthy
@@ -41,8 +44,6 @@ services:
       dockerfile: docker/qoder.Dockerfile
     image: ai-ide-gateway/qoder
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:5050:5050"   # 仅本机可访问控制台，用于导入 Qoder 账号/PAT
     environment:
       QODER_HOST: 0.0.0.0
       QODER_PORT: "5050"
@@ -65,8 +66,6 @@ services:
       dockerfile: docker/codebuddy.Dockerfile
     image: ai-ide-gateway/codebuddy
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8787:8787"   # 仅本机可访问控制台，用于浏览器授权 CN 账号
     environment:
       ADMIN_KEY: ${CODEBUDDY_ADMIN_KEY:?请在 .env 设置 CODEBUDDY_ADMIN_KEY（>=20 位）}
       CODEBUDDY2OPENAI_KEY: ${CODEBUDDY_BACKEND_KEY:?请在 .env 设置 CODEBUDDY_BACKEND_KEY}
